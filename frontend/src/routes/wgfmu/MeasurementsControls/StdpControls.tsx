@@ -2,10 +2,11 @@ import { Number, Slider } from '../../../components/Input'
 import math, { formatCfg } from '../../../utils/math'
 
 import { useState, useEffect } from 'react'
+import { motion } from "framer-motion"
 import { useAppSelector, useAppDispatch } from '../../../store/hooks'
 import { selectStdpParams, setStdpParamsField, setPoints, setTimeScale } from './waveformSlice'
 import { StdpControls as StdpControlsInterface, VoltageWaveform, StdpWaveform } from './types'
-import { boolean } from 'mathjs'
+import { boolean, minTransformDependencies } from 'mathjs'
 import { interpolate, pointRadial } from 'd3'
 
 type Validations = {
@@ -23,9 +24,14 @@ async function generateWaveform(params: StdpControlsInterface): Promise<StdpWave
     let delay = getValue(params.delay)
     let amplitude = getValue(params.amplitude)
     let pulseDuration = getValue(params.pulseDuration)
-    
+    let stdpType = params.stdpType
+
     let maxV = amplitude / 2
     let constantVHigh = (amplitude/2) / (pulseDuration / 2) * delay
+    let cuttingV = (amplitude/2) / (pulseDuration / 2) * (pulseDuration/2 - delay)
+
+    let multiplier = stdpType == 'Depression' ? 1 : -1
+
 
     let time = 0
 
@@ -37,14 +43,14 @@ async function generateWaveform(params: StdpControlsInterface): Promise<StdpWave
     // First ramp
     equivalentWaveForm.push({
         time,
-        voltage: constantVHigh
+        voltage: constantVHigh * multiplier
     })
 
     time += pulseDuration / 2 - delay
     // First High constant
     equivalentWaveForm.push({
         time,
-        voltage: constantVHigh
+        voltage: constantVHigh * multiplier
     })
 
     // console.log(`delay: ${delay}`)
@@ -54,24 +60,24 @@ async function generateWaveform(params: StdpControlsInterface): Promise<StdpWave
         // Lower pulse
         equivalentWaveForm.push({
             time,
-            voltage: constantVHigh - (amplitude / 2)
+            voltage: (-cuttingV - amplitude / 2) * multiplier
         })
         time += delay
         equivalentWaveForm.push({
             time,
-            voltage: constantVHigh - amplitude / 2
+            voltage: (-cuttingV - amplitude / 2) * multiplier
         })
     
         time += 1e-8
         // last High constant
         equivalentWaveForm.push({
             time,
-            voltage: constantVHigh
+            voltage: constantVHigh * multiplier
         })
         time += pulseDuration / 2 - delay
         equivalentWaveForm.push({
             time,
-            voltage: constantVHigh
+            voltage: constantVHigh * multiplier
         })
     } else {
         time += waitTime
@@ -117,13 +123,13 @@ async function generateWaveform(params: StdpControlsInterface): Promise<StdpWave
         time += pulseDuration / 2
         waveform.push({
             time,
-            voltage: amplitude / 2
+            voltage: amplitude / 2 * multiplier
         })
     
         time += 1e-8
         waveform.push({
             time,
-            voltage: - amplitude / 2
+            voltage: - amplitude / 2 * multiplier
         })
     
         time += pulseDuration / 2
@@ -165,8 +171,32 @@ export default function StdpControls() {
         waitTime: true
     } as Validations)
 
+    const [maxV, setMaxV] = useState(0)
+    const [minV, setMinV] = useState(0)
+    const [maxAmplitude, setMaxAmplitude] = useState(0)
+
     const onValidateCurry = (id: keyof StdpControlsInterface) => {
         return (isValid: boolean) => setValid({ ...valid, [id]: isValid })
+    }
+
+    function getMaxV(params: StdpControlsInterface) {
+        let pulseDuration = getValue(params.pulseDuration)
+        let delay = getValue(params.delay)
+        let amplitude = getValue(params.amplitude)
+        let constantVHigh = (amplitude/2) / (pulseDuration / 2) * delay
+        let constantVlow = (constantVHigh - amplitude / 2)
+
+        return Math.abs(params.stdpType == 'Depression' ? constantVHigh : constantVlow)
+    }
+
+    function getMinV(params: StdpControlsInterface) {
+        let pulseDuration = getValue(params.pulseDuration)
+        let delay = getValue(params.delay)
+        let amplitude = getValue(params.amplitude)
+        let constantVHigh = (amplitude/2) / (pulseDuration / 2) * delay
+        let constantVlow = (constantVHigh - amplitude / 2)
+
+        return -Math.abs(params.stdpType == 'Depression' ? constantVlow : constantVHigh)
     }
 
     useEffect(() => {
@@ -182,12 +212,33 @@ export default function StdpControls() {
         }
     }, [params])
 
+    useEffect(() => {
+
+        if (!Object.values(valid).every( v => v ))
+            return
+        try {
+            let maxAmplitudetmp = params.stdpType == 'Depression' ?
+                            10 * (getValue(params.pulseDuration) / 2) / getValue(params.delay) * 2
+                            :
+                            Math.abs(10 / (getValue(params.delay)/getValue(params.pulseDuration) - 1/2))
+                            
+
+            setMaxAmplitude(maxAmplitudetmp)
+
+            setMaxV( getMaxV(params) )
+            setMinV( getMinV(params) )
+        } catch {}
+        // set()
+    }, [params])
+
     return (
         <div className="w-full flex flex-col items-center">
             <div className='py-4 w-full border-b border-solid border-neutral-600'>
                 <Slider
                     label="Delay"
                     onChange={(value) => {
+                        // if (getMaxV({...params, delay: value}) <=  10 && getMinV({...params, delay: value}) >=  -10) {
+                        // }
                         dispatch(setStdpParamsField({ val: value, key: 'delay' }))
                     }}
                     value={params.delay}
@@ -196,9 +247,26 @@ export default function StdpControls() {
                         type: "sci",
                         unit: "s"
                     }}
-                    step={math.unit(params.pulseDuration).value/2 / 100}
+                    step={(() => {
+                        try {
+                            return math.unit(params.pulseDuration).value/2 / 100
+                        } catch {
+                            return 1
+                        }   
+                    })()}
                     min={0}
-                    max={math.unit(params.pulseDuration).value/2}
+                    max={
+                        (() => {
+                            try {
+                                let unit = math.unit(params.pulseDuration)
+                                //@ts-expect-error
+                                let v = Math.round(unit.value / 2 * 1/unit.units[0].prefix.value * 100) / (100*1/unit.units[0].prefix.value)
+                                return v
+                            } catch {
+                                return 0
+                            }   
+                        })()
+                    }
                 />
 
             </div>
@@ -214,6 +282,10 @@ export default function StdpControls() {
                         type: "sci",
                         unit: "V"
                     }}
+                    // max={maxAmplitude}
+                    // min={minAmplitude}
+                    max={maxAmplitude}
+                    min={0}
                 />
             </div>
             <div className="py-4 w-full border-b border-solid border-neutral-600">
@@ -244,7 +316,7 @@ export default function StdpControls() {
                     }}
                 />
             </div>
-            <div className="py-4 w-full">
+            <div className="py-4 w-full border-b border-solid border-neutral-600">
                 <Number
                     label="Number of points"
                     onChange={(value) => {
@@ -253,6 +325,67 @@ export default function StdpControls() {
                     value={params.nPoints}
                     onValidate={onValidateCurry("nPoints")}
                 />
+            </div>
+            <div className="py-4 w-full border-b border-solid border-neutral-600">
+                <div className='w-full border border-solid flex-col justify-around items-center border-neutral-600 rounded-lg p-2'>
+                    <button
+                        className="font-bold rounded-lg w-full"
+                        onClick={() => dispatch(setStdpParamsField({ val: "Depression", key: 'stdpType' }))}
+                    >
+                       <div className='relative w-full h-full text-start'>
+                            <div className='p-2'>
+                                Depression
+                            </div>
+                            {params.stdpType === 'Depression' ? (
+                            <motion.div className="absolute h-full w-full bg-neutral-700 top-0 -z-10 rounded-lg" layoutId="depressionselector" />
+                            ) : null}
+                        </div>
+                    </button>
+                    <button
+                        className="font-bold rounded-lg w-full text-start"
+                        onClick={() => dispatch(setStdpParamsField({ val: "Potenciation", key: 'stdpType' }))}
+                    >
+                        <div className='relative w-full h-full'>
+                            <div className='p-2'>
+
+                                Potenciation
+                            </div>
+                            {params.stdpType === 'Potenciation' ? (
+                            <motion.div className="absolute h-full w-full bg-neutral-700 top-0 -z-10 rounded-lg" layoutId="depressionselector" />
+                            ) : null}
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <div className="py-4 w-full border-b border-solid border-neutral-600">
+                <div className="flex justify-between">
+                    <div className='font-bold inline pr-5'>
+                        Max V:
+                    </div>
+                    <div className=' text-end inline'>
+                        {(() => {
+                            try {
+                                return math.unit(maxV.toString() + 'V').format(formatCfg)
+                            }catch {
+                                return ""
+                            }
+                        })()}
+                    </div>
+                </div>
+                <div className="flex justify-between">
+                    <div className='font-bold inline pr-5'>
+                        Min V: 
+                    </div>
+                    <div className=' text-end inline'>
+                        {(() => {
+                            try {
+                                return math.unit(minV.toString() + 'V').format(formatCfg)
+                            }catch {
+                                return ""
+                            }
+                        })()}
+                    </div>
+                </div>
             </div>
         </div>
     )

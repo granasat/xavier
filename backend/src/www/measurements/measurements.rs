@@ -30,7 +30,7 @@ pub struct ListedMeasurement {
 
 pub async fn list(app: web::Data<AppState>) -> Result<HttpResponse, Error> {
 
-    let mut list: Vec<ListedMeasurement> = entity::measurement::Entity::find()
+    let list: Vec<ListedMeasurement> = entity::measurement::Entity::find()
         .select_only()
         .column(entity::measurement::Column::Id)
         .column(entity::measurement::Column::Status)
@@ -53,7 +53,7 @@ pub async fn get_single(
     app: web::Data<AppState>,
     id: web::Path<i32>,
 ) -> Result<HttpResponse, Error> {
-    let mut measurement = entity::measurement::Entity::find_by_id(id.into_inner())
+    let measurement = entity::measurement::Entity::find_by_id(id.into_inner())
         .one(app.db.get_connection())
         .await
         .expect("Could not find measurement")
@@ -70,7 +70,7 @@ pub async fn get_single_file(
     app: web::Data<AppState>,
     id: web::Path<i32>,
 ) -> actix_web::Result<NamedFile> {
-    let mut measurement = entity::measurement::Entity::find_by_id(id.into_inner())
+    let measurement = entity::measurement::Entity::find_by_id(id.into_inner())
         .one(app.db.get_connection())
         .await
         .expect("Could not find measurement")
@@ -98,10 +98,10 @@ pub async fn get_single_file(
             for point in data {
                 match point.current {
                     Some(current) => {
-                        writeln!(f, "{},{},{}", point.voltage, current, point.time);
+                        writeln!(f, "{},{},{}", point.voltage, current, point.time)?;
                     }
                     None => {
-                        writeln!(f, "{} {}", point.voltage, point.time);
+                        writeln!(f, "{} {}", point.voltage, point.time)?;
                     }
                 }
             }

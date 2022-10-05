@@ -1,22 +1,20 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use log::{error};
 
-use crate::b1500::measure::{measure_pulse_fastiv, self, measure_stdp_fastiv};
+use crate::b1500::measure::{measure_stdp_fastiv, StdpType};
 use crate::b1500::wgfmu::{self, driver::Measurement};
 use crate::AppState;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use actix_web::rt::spawn;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use entity::sea_orm::{ActiveModelTrait, Set};
-use uuid::Uuid;
 
 use entity::measurement;
 use super::types::{ErrorJson, MeasurementRef};
@@ -29,46 +27,47 @@ pub struct StdpMeasurementParams {
     delay: f64,
     wait_time: f64,
     pulse_duration: f64,
+    stdp_type: StdpType,
     n_points: usize,
-    avg_time: f64
+    avg_time: f64,
 }
 
-impl StdpMeasurementParams {
-    fn to_value(&self) -> serde_json::Value {
-        let mut map = serde_json::Map::new();
-        map.insert(
-            "amplitude".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.amplitude).unwrap()),
-        );
-        map.insert(
-            "delay".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.delay).unwrap()),
-        );
-        map.insert(
-            "wait_time".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.wait_time).unwrap()),
-        );
-        map.insert(
-            "pulse_duration".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.pulse_duration).unwrap()),
-        );
-        map.insert(
-            "n_points".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.n_points as f64).unwrap()),
-        );
-        map.insert(
-            "avg_time".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
+// impl StdpMeasurementParams {
+//     fn to_value(&self) -> serde_json::Value {
+//         let mut map = serde_json::Map::new();
+//         map.insert(
+//             "amplitude".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.amplitude).unwrap()),
+//         );
+//         map.insert(
+//             "delay".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.delay).unwrap()),
+//         );
+//         map.insert(
+//             "wait_time".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.wait_time).unwrap()),
+//         );
+//         map.insert(
+//             "pulse_duration".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.pulse_duration).unwrap()),
+//         );
+//         map.insert(
+//             "n_points".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.n_points as f64).unwrap()),
+//         );
+//         map.insert(
+//             "avg_time".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
 
-        Value::Object(map)
-    }
-}
+//         Value::Object(map)
+//     }
+// }
 
 impl Responder for StdpMeasurementParams {
     type Body = BoxBody;
 
-    fn respond_to(self, req: &actix_web::HttpRequest) -> actix_web::HttpResponse<Self::Body> {
+    fn respond_to(self, _: &actix_web::HttpRequest) -> actix_web::HttpResponse<Self::Body> {
         let res_body = serde_json::to_string(&self).unwrap();
 
         HttpResponse::Ok()
@@ -124,7 +123,8 @@ pub async fn stdp_measurement(
             params.pulse_duration,
             params.wait_time,
             params.n_points,
-            params.avg_time
+            params.avg_time,
+            params.stdp_type
         );
 
         tx.send(result).unwrap();

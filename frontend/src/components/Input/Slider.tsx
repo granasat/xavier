@@ -107,13 +107,15 @@ export default function Slider(props: Props) {
                                     (
                                         (() => {
                                             try {
-                                                let v =
+                                                let vUnit =
                                                     math.unit(props.value.slice(-1) == props.type.unit ?
                                                         props.value
                                                         :
                                                         props.value + props.type.unit
-                                                    ).value
-                                                return Math.max(props.min, Math.min(props.max, v))
+                                                    )
+                                                let v = vUnit.value
+                                                v = Math.max(props.min, Math.min(props.max, v))
+                                                return v
                                             } catch {
                                                 return "0"
                                             }
@@ -191,21 +193,6 @@ export default function Slider(props: Props) {
                                 return
                             }
 
-                            // let v = 0
-
-                            // try {
-                            //     let aux = parseFloat(e.target.value)
-                            //     console.log(aux)
-                            //     !isNaN(aux) && ((v = aux) || props.onChange(e.target.value))
-                            //     return
-                            // } catch { }
-
-
-                            // try {
-                            //     v = math.unit(e.target.value).value
-                            //     props.onChange(e.target.value)
-                            //     return
-                            // } catch {}
                             let v = e.target.value.length > 1 ? e.target.value.replace(/^0+/, '') : e.target.value
                             if (v == "") {
                                 v = "0"

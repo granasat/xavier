@@ -58,7 +58,7 @@ export default function MeasurementsDropdown() {
                 tabIndex={-1}
                 id="menu-item-0"
                 style={style}
-                onClick={() => dispatch(fetchMeasurement(measurements[index].id))}
+                onClick={() => dispatch(fetchMeasurement(measurements[i].id))}
 
             >
                 <div

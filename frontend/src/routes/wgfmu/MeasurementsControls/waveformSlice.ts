@@ -36,10 +36,11 @@ const initialState: WaveformState = {
   },
   stdpParams: {
     delay: "500 ns",
-    amplitude: "300 V",
+    amplitude: "3 V",
     pulseDuration: "2 us",
-    waitTime: "1 us"  ,
-    nPoints: "1000"  
+    waitTime: "1 us",
+    stdpType: "Depression",
+    nPoints: "400",
   },
   avgTime: "10 ns",
   timeScale: 1, // scale to apply on the x axis,

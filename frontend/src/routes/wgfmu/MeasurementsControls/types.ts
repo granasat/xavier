@@ -31,6 +31,7 @@ export interface StdpControls {
     amplitude: string,
     pulseDuration: string,
     waitTime: string,
+    stdpType: "Depression" | "Potenciation",
     nPoints: string
 }
 

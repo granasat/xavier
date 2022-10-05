@@ -1,22 +1,20 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use log::{error};
 
-use crate::b1500::measure::{measure_pulse_fastiv, self};
+use crate::b1500::measure::{measure_pulse_fastiv};
 use crate::b1500::wgfmu::{self, driver::Measurement};
 use crate::AppState;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use actix_web::rt::spawn;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use entity::sea_orm::{ActiveModelTrait, Set};
-use uuid::Uuid;
 
 use entity::measurement;
 use super::types::{ErrorJson, MeasurementRef};
@@ -35,33 +33,33 @@ pub struct PulseMeasurementParams {
     n_points_low: usize,
 }
 
-impl PulseMeasurementParams {
-    fn to_value(&self) -> serde_json::Value {
-        let mut map = serde_json::Map::new();
-        map.insert(
-            "avg_time".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
-        map.insert(
-            "v_high".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
-        map.insert(
-            "v_low".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
-        map.insert(
-            "cycle_time".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
-        map.insert(
-            "n_pulses".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-        );
+// impl PulseMeasurementParams {
+//     fn to_value(&self) -> serde_json::Value {
+//         let mut map = serde_json::Map::new();
+//         map.insert(
+//             "avg_time".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
+//         map.insert(
+//             "v_high".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
+//         map.insert(
+//             "v_low".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
+//         map.insert(
+//             "cycle_time".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
+//         map.insert(
+//             "n_pulses".to_string(),
+//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
+//         );
 
-        Value::Object(map)
-    }
-}
+//         Value::Object(map)
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
@@ -71,7 +69,7 @@ pub struct Test {
 impl Responder for PulseMeasurementParams {
     type Body = BoxBody;
 
-    fn respond_to(self, req: &actix_web::HttpRequest) -> actix_web::HttpResponse<Self::Body> {
+    fn respond_to(self, _: &actix_web::HttpRequest) -> actix_web::HttpResponse<Self::Body> {
         let res_body = serde_json::to_string(&self).unwrap();
 
         HttpResponse::Ok()

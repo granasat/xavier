@@ -43,6 +43,7 @@ export async function stdpMeasurement(params: StdpControls, avgTime: string) {
         waitTime: math.unit(params.waitTime).value,
         pulseDuration: math.unit(params.pulseDuration).value,
         nPoints: parseInt(params.nPoints),
+        stdpType: params.stdpType,
         avgTime: math.unit(avgTime).value
     }
 

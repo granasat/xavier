@@ -1,16 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use env_logger;
-use log::{info, debug};
-use std::time::Duration;
 use std::{
     sync::{Arc, Mutex},
     thread,
 };
 
-use log::{Level, LevelFilter, Metadata, Record};
+use log::LevelFilter;
 use std::io::Write;
-use std::sync::mpsc::{self, Receiver, Sender};
 
 use eframe::egui;
 
@@ -26,8 +23,7 @@ fn log() {
 pub fn gui() {
     std::env::set_var("RUST_LOG", "info");
 
-
-    let lg: Arc<Mutex<Vec<Log>>> = Arc::new(Mutex::new(vec![]));   
+    let lg: Arc<Mutex<Vec<Log>>> = Arc::new(Mutex::new(vec![]));
 
     let options = eframe::NativeOptions::default();
 
@@ -37,9 +33,8 @@ pub fn gui() {
             "Xavier",
             options,
             Box::new(|cc| {
-                let rep = cc.egui_ctx.clone();
                 let xavier = Xavier::new(cc, lg);
-                
+
                 thread::spawn(move || {
                     log();
                 });
@@ -52,14 +47,12 @@ pub fn gui() {
 
 struct Log {
     level: String,
-    message: String
+    message: String,
 }
 
 struct Xavier {
     log: Arc<Mutex<Vec<Log>>>,
-    // repaint_rx: Receiver<i32>,
-    resizable: bool,
-    vertical_scroll_offset: Option<f32>,
+    resizable: bool
 }
 
 impl Xavier {
@@ -68,37 +61,35 @@ impl Xavier {
 
         let mut builder = env_logger::Builder::new();
 
-
         builder
-        .format({
-            let log = lg.clone();
-            let a = cc.egui_ctx.clone();
-            move |buf, record| {
-                let mut lg_unlock = log.lock().unwrap();
-                let log_value = format!("{}: {}", record.level(), record.args());
-                
-                let mut mssg = record.args().to_string();
-                if mssg.len() > 100 {
-                    mssg = (&mssg[0..100]).to_string();
+            .format({
+                let log = lg.clone();
+                let a = cc.egui_ctx.clone();
+                move |buf, record| {
+                    let mut lg_unlock = log.lock().unwrap();
+                    let log_value = format!("{}: {}", record.level(), record.args());
+
+                    let mut mssg = record.args().to_string();
+                    if mssg.len() > 100 {
+                        mssg = (&mssg[0..100]).to_string();
+                    }
+
+                    lg_unlock.push(Log {
+                        level: record.level().to_string(),
+                        message: mssg,
+                    });
+
+                    a.request_repaint();
+                    writeln!(buf, "{}", log_value)
                 }
-
-                lg_unlock.push(Log {
-                    level: record.level().to_string(),
-                    message:  mssg
-                });
-
-                a.request_repaint();
-                writeln!(buf, "{}", log_value)
-            }
-        })
-        .filter(None, LevelFilter::Debug)
-        .init();
+            })
+            .filter(None, LevelFilter::Debug)
+            .init();
 
         Xavier {
             log: lg.clone(),
             // repaint_rx: rx,
             resizable: false,
-            vertical_scroll_offset: None,
         }
     }
 
@@ -124,7 +115,7 @@ impl Xavier {
                     ui.heading("Message");
                 });
             })
-            .body(|mut body| {
+            .body(|body| {
                 let log = self.log.lock().unwrap();
                 body.rows(text_height, log.len(), |row_index, mut row| {
                     row.col(|ui| {
@@ -139,7 +130,7 @@ impl Xavier {
 }
 
 impl eframe::App for Xavier {
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
                 ui.checkbox(&mut self.resizable, "Resizable columns");
@@ -173,11 +164,10 @@ impl eframe::App for Xavier {
         //     Err(_) => {}
         // };
     }
-
 }
 
-fn clock_emoji(row_index: usize) -> String {
-    char::from_u32(0x1f550 + row_index as u32 % 24)
-        .unwrap()
-        .to_string()
-}
+// fn clock_emoji(row_index: usize) -> String {
+//     char::from_u32(0x1f550 + row_index as u32 % 24)
+//         .unwrap()
+//         .to_string()
+// }

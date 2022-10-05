@@ -51,7 +51,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 impl<T>From<PoisonError<T>> for Error {
-    fn from(err: PoisonError<T>) -> Error {
+    fn from(_: PoisonError<T>) -> Error {
         Error::MutexUnlockError
     }
 }

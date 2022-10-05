@@ -1,4 +1,5 @@
 import React, { useState, useEffect, KeyboardEventHandler } from 'react'
+import mathjs from '../../utils/math'
 import math, { formatCfg } from '../../utils/math'
 import './Number.css'
 
@@ -49,9 +50,7 @@ export default function Number(props: Props) {
         if (props.type) {
             try {
                 let tmpValue = appendUnit(props.value, props.type.unit)
-                console.log(`checking valid ${tmpValue}`)
                 let m = math.unit(tmpValue as string)
-                console.log(m)
                 props.onChange(m.format(formatCfg))
                 setIsValid(true)
                 props.onValidate(true)
@@ -70,6 +69,9 @@ export default function Number(props: Props) {
 
             props.min != undefined && newVal < props.min && (newVal = props.min)
             props.max != undefined && newVal > props.max && (newVal = props.max)
+
+            console.log(`newVal ${newVal}`)
+            props.max != undefined && console.log(`max ${props.max}`)
 
             props.onChange(math.unit(newVal.toString() + ' ' + mSplit[1]).format(formatCfg))
         } else {

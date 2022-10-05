@@ -1,6 +1,6 @@
 // use libloading::{Library, Symbol};
 use num_traits::{FromPrimitive};
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap};
 // use std::ffi::{CStr, CString};
 // use std::os::raw::{c_char, c_double, c_int};
 // use std::rc::Rc;
@@ -72,6 +72,13 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
     }
 
     fn add_vector(&mut self, pattern: &str, d_time: f64, voltage: f64) -> Res {
+
+        let mut d_time = d_time;
+
+        if ! (d_time > 0.0) {
+            d_time = 1e-8;
+        }
+
         match self.vectors.get_mut(pattern) {
             Some(vector) => {
                 vector.last_t = vector.last_t + d_time;

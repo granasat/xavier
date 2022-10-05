@@ -1,6 +1,5 @@
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
-use sea_orm::DatabaseConnection;
 
 #[cfg(debug_assertions)]
 use dotenv::dotenv;
@@ -54,7 +53,7 @@ fn main() {
     std::env::set_var("RUST_LOG", "debug");
 
     std::thread::spawn(move || {
-        web_server();
+        web_server().unwrap();
     });
 
     gui::gui();
