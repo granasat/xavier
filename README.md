@@ -1,7 +1,7 @@
 <p align="center">
 	<img width="100px" src="images/xavier.svg" align="center" alt="Xavier" style="margin-right: 15px" />
 	<h2 align="center">Xavier</h2>
-	<p align="center">Keysight B1530A WGFMU measuring program</p>
+	<p align="center">Keysight B1530A WGFMU measuring program focused on memristor characterization</p>
 </p>
 
 <div align="center">
