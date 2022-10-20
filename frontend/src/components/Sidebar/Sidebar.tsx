@@ -25,12 +25,12 @@ export default function Sidebar() {
     return (
         <>
             <div
-                className="h-screen border-r-[1px] border-neutral-600">
+                className="h-screen border-r-[1px] border-neutral-600 xs:rotate-90">
                 <div className="flex flex-col justify-center">
                     <div id="logo" className="grid content-center justify-center p-3 border-b-[1px]  border-neutral-600 border-solid">
                         <NavLink to={'/'}>
                             <div className="w-[55px] mx-auto">
-                                <img className="w-full h-full" src="/sergi2.svg" alt="" />
+                                <img className="w-full h-full" src="/favicon.svg" alt="" />
                             </div>
                         </NavLink>
                     </div>

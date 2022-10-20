@@ -48,18 +48,16 @@ pub enum Status {
 }
 
 #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
-#[sea_orm(rs_type = "String", db_type = "String(Some(2))")]
+#[sea_orm(rs_type = "String", db_type = "String(Some(4))")]
 pub enum Category {
     #[sea_orm(string_value = "P")]
     Pulse,
-    #[sea_orm(string_value = "R")]
-    Ramp,
     #[sea_orm(string_value = "PC")]
-    PulseCycling,
-    #[sea_orm(string_value = "RC")]
-    RampCycling,
+    PulseCollection,
     #[sea_orm(string_value = "ST")]
     Stdp,
+    #[sea_orm(string_value = "STC")]
+    StdpCollection,
 }
 
 impl Entity {

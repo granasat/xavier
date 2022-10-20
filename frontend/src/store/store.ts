@@ -1,5 +1,6 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
-import waveformReducer from '../routes/wgfmu/MeasurementsControls/waveformSlice';
+import waveformReducer from '../routes/wgfmu/MeasurementsControls/measurementControlsSlice';
+import { loadState, saveState } from '../utils/localstorage';
 import globalReducer from './globalSlice';
 
 export const store = configureStore({
@@ -7,6 +8,11 @@ export const store = configureStore({
     global: globalReducer,
     waveform: waveformReducer
   },
+  preloadedState: loadState()
+});
+
+store.subscribe(() => {
+  saveState(store.getState());
 });
 
 export type AppDispatch = typeof store.dispatch;

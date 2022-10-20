@@ -1,5 +1,5 @@
 use entity::sea_orm;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ConnectOptions, DatabaseConnection};
 
 #[derive(Debug, Clone)]
 pub struct Database {
@@ -7,11 +7,16 @@ pub struct Database {
 }
 
 impl Database {
-
     pub async fn new() -> Self {
-        let connection = sea_orm::Database::connect(
-            std::env::var("DATABASE_URL").unwrap()
-        )
+        let database_url = match std::env::var("DATABASE_URL") {
+            Ok(url) => url,
+            Err(_) => "sqlite:./xavier.db?mode=rwc".to_owned(),
+        };
+
+        let mut opt = ConnectOptions::new(database_url);
+        opt.sqlx_logging(false);
+
+        let connection = sea_orm::Database::connect(opt)
             .await
             .expect("Could not connect to database");
         Database { connection }
@@ -20,5 +25,4 @@ impl Database {
     pub fn get_connection(&self) -> &DatabaseConnection {
         &self.connection
     }
-
 }

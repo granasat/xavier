@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { graph } from './graph'
+import { graph, ImplementedGraphs } from './graph'
 import PulseChart from './pulseGraph'
 import { Dimensions } from '.'
 
@@ -12,7 +12,8 @@ const dimensions = {
 interface Props {
     data: any,
     dimensions: Dimensions,
-    timeScale: number
+    timeScale: number,
+    type: keyof ImplementedGraphs
 }
 
 function Graph(props: Props) {
@@ -20,7 +21,7 @@ function Graph(props: Props) {
     const svgRef = useRef<SVGSVGElement>(null)
     
     const createGraph = async () => {
-        graph(svgRef, props.data, props.dimensions)
+        graph(svgRef, props.data, props.dimensions, props.type)
     }
 
     useEffect(() => {
@@ -30,7 +31,7 @@ function Graph(props: Props) {
     createGraph()
 
     return (
-        <div>
+        <div className="flex justify-center items-center">
             <svg ref={svgRef}/>
         </div>
     )

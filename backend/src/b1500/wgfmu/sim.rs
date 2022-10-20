@@ -66,8 +66,6 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
             },
         );
 
-        println!("inserted!");
-
         get_result(0)
     }
 
@@ -199,7 +197,14 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
         std::thread::sleep(std::time::Duration::from_millis(4000));
 
         while vector.vector.len() <= 1 {
-            vector = values.next().unwrap();
+            match values.next() {
+                Some(next_v) => {
+                    vector = next_v;
+                },
+                None => {
+                    break;
+                }
+            }
         }
 
         if vector.vector.len() > 0 {
@@ -207,5 +212,9 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
         }
 
         Result::Err(Error::UnidentifiedError)
+    }
+
+    fn do_self_calibration(&mut self) -> Res {
+        Ok(())
     }
 }

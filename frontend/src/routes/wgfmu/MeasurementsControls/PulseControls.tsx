@@ -3,7 +3,7 @@ import { Number, Slider } from "../../../components/Input"
 import { number } from 'mathjs';
 import { HiLockOpen, HiLockClosed } from 'react-icons/hi'
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { setPoints, setPulseParamsField, selectPulseParams, setTimeScale } from './waveformSlice';
+import { setPoints, setPulseParamsField, selectPulseParams, setTimeScale } from './measurementControlsSlice';
 import { VoltageWaveform } from './types'
 import math from '../../../utils/math'
 

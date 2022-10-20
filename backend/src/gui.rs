@@ -1,31 +1,45 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
 use env_logger;
 use std::{
     sync::{Arc, Mutex},
     thread,
 };
 
-use log::LevelFilter;
+use log::{debug, LevelFilter};
 use std::io::Write;
 
 use eframe::egui;
 
-fn log() {
-    // info!("Hello, world!");
-    // thread::sleep(Duration::from_millis(3000));
-    // info!("Logged!");
-    // debug!("Logged debug!");
-    // thread::sleep(Duration::from_millis(3000));
-    // info!("logged again!");
+use crate::config::Config;
+
+fn log() {}
+
+fn load_icon(path: &str) -> eframe::IconData {
+    debug!("Loading icon...");
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open(path)
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+
+    eframe::IconData {
+        rgba: icon_rgba,
+        width: icon_width,
+        height: icon_height,
+    }
 }
 
-pub fn gui() {
+pub fn gui(cfg: Config) {
     std::env::set_var("RUST_LOG", "info");
 
     let lg: Arc<Mutex<Vec<Log>>> = Arc::new(Mutex::new(vec![]));
 
-    let options = eframe::NativeOptions::default();
+    let options = eframe::NativeOptions {
+        icon_data: Some(load_icon("assets/xavier.png")),
+        ..Default::default()
+    };
 
     {
         let lg = lg.clone();
@@ -33,7 +47,7 @@ pub fn gui() {
             "Xavier",
             options,
             Box::new(|cc| {
-                let xavier = Xavier::new(cc, lg);
+                let xavier = Xavier::new(cc, lg, cfg);
 
                 thread::spawn(move || {
                     log();
@@ -52,11 +66,12 @@ struct Log {
 
 struct Xavier {
     log: Arc<Mutex<Vec<Log>>>,
-    resizable: bool
+    resizable: bool,
+    cfg: Config,
 }
 
 impl Xavier {
-    fn new(cc: &eframe::CreationContext<'_>, lg: Arc<Mutex<Vec<Log>>>) -> Xavier {
+    fn new(cc: &eframe::CreationContext<'_>, lg: Arc<Mutex<Vec<Log>>>, cfg: Config) -> Xavier {
         cc.egui_ctx.set_pixels_per_point(1.5);
 
         let mut builder = env_logger::Builder::new();
@@ -84,12 +99,15 @@ impl Xavier {
                 }
             })
             .filter(None, LevelFilter::Debug)
+            .filter_module("sea_orm", log::LevelFilter::Off)
+            .filter_module("actix_web", log::LevelFilter::Off)
             .init();
 
         Xavier {
             log: lg.clone(),
             // repaint_rx: rx,
             resizable: false,
+            cfg,
         }
     }
 
@@ -132,42 +150,30 @@ impl Xavier {
 impl eframe::App for Xavier {
     fn update(&mut self, ctx: &eframe::egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical(|ui| {
-                ui.checkbox(&mut self.resizable, "Resizable columns");
+            // ui.hyperlink_to("Xavier", "http://localhost:8000/wgfmu");
 
-                ui.label("Table type:");
-            });
-
+            ui.heading("Log");
             ui.separator();
-
-            // Leave room for the source code link after the table demo:
             use egui_extras::{Size, StripBuilder};
             StripBuilder::new(ui)
-                .size(Size::remainder()) // for the table
-                .size(Size::exact(10.0)) // for the source code link
+                .size(Size::remainder())
+                .size(Size::exact(25.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
                         self.table_ui(ui);
                     });
-                    // strip.cell(|ui| {
-                    //     ui.vertical_centered(|ui| {
-                    //         ui.add(crate::egui_github_link_file!());
-                    //     });
-                    // });
+                    strip.cell(|ui| {
+                        ui.separator();
+                        ui.vertical_centered(|ui| {
+                            let tooltip_text = "Xavier web frontend";
+                            ui.hyperlink_to(
+                                "Xavier",
+                                format!("http://localhost:{}/wgfmu", self.cfg.port),
+                            )
+                            .on_hover_text(tooltip_text);
+                        });
+                    });
                 });
         });
-        // match self.repaint_rx.try_recv() {
-        //     Ok(_) => {
-        //         println!("Repaint requested");
-        //         // ctx.rep;
-        //     }
-        //     Err(_) => {}
-        // };
     }
 }
-
-// fn clock_emoji(row_index: usize) -> String {
-//     char::from_u32(0x1f550 + row_index as u32 % 24)
-//         .unwrap()
-//         .to_string()
-// }

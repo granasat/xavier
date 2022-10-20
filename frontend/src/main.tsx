@@ -7,10 +7,9 @@ import {
 } from 'react-router-dom'
 import { Provider } from 'react-redux';
 import { store } from './store/store';
-import App from './App'
 import Root from './routes/root'
 import Wgfmu from './routes/wgfmu/Wgfmu'
-import { PulseControls, RampControls} from './routes/wgfmu/MeasurementsControls'
+import { PulseControls, StdpControls} from './routes/wgfmu/MeasurementsControls'
 import ErrorPage from './ErrorPage'
 import './index.css'
 

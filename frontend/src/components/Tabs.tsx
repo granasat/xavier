@@ -6,7 +6,8 @@ type Props = {
     page: number,
     direction: -1 | 1,
     paginate: (dir: number) => void,
-    height?: number
+    height?: number,
+    noSwipe?: boolean
 }
 
 const spring = {
@@ -38,13 +39,32 @@ const variants = {
     )
 }
 
+const variantsNoSwipe = {
+    enter: (direction: number) => (
+        {
+            opacity: 0
+        }
+    ),
+    center: {
+        zIndex: 1,
+        x: 0,
+        opacity: 1
+    },
+    exit: (direction: number) => (
+        {
+            zIndex: 0,
+            opacity: 0
+        }
+    )
+}
+
 const swipeConfidenceThreshold = 10000
 
 const swipePower = (offset: number, velocity: number) => (
     Math.abs(offset) * velocity
 )
 
-export default function Tabs({ tabs, page, direction, paginate, height }: Props) {
+export default function Tabs({ tabs, page, direction, paginate, height, noSwipe }: Props) {
     return (
         <div className="relative h-full w-full" style={height ? {height: `${height}px`} : {}}>
             <AnimatePresence initial={false} custom={direction}>
@@ -53,7 +73,7 @@ export default function Tabs({ tabs, page, direction, paginate, height }: Props)
                     className='absolute h-full w-full'
                     key={page}
                     custom={direction}
-                    variants={variants}
+                    variants={noSwipe ? variantsNoSwipe : variants}
                     initial="enter"
                     animate="center"
                     exit="exit"

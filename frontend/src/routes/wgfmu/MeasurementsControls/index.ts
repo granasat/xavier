@@ -1,4 +1,4 @@
 
-export {default as RampControls} from './StdpControls'
+export {StdpControls} from './Stdp'
 export {default as PulseControls} from './PulseControls'
 

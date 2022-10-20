@@ -8,8 +8,8 @@ use actix_web::{web, Error, HttpResponse};
 
 use chrono::SecondsFormat;
 use entity::{self, measurement::Category};
-use sea_orm::{JsonValue, FromQueryResult};
-use sea_orm::{EntityTrait, QuerySelect, prelude::DateTimeLocal};
+use sea_orm::{prelude::DateTimeLocal, EntityTrait, QuerySelect};
+use sea_orm::{FromQueryResult, JsonValue};
 use serde::Serialize;
 use serde_json;
 
@@ -18,18 +18,16 @@ use crate::b1500::wgfmu::driver::Measurement;
 
 // use std::time::Instant;
 
-
 #[derive(FromQueryResult, Serialize)]
 pub struct ListedMeasurement {
     pub id: i32,
     pub status: String,
     pub date: DateTimeLocal,
     pub category: entity::measurement::Category,
-    pub parameters: JsonValue
+    pub parameters: JsonValue,
 }
 
 pub async fn list(app: web::Data<AppState>) -> Result<HttpResponse, Error> {
-
     let list: Vec<ListedMeasurement> = entity::measurement::Entity::find()
         .select_only()
         .column(entity::measurement::Column::Id)
@@ -108,6 +106,37 @@ pub async fn get_single_file(
 
             Ok(NamedFile::open(file_name)?)
         }
-        _ => (panic!()),
+        Category::Stdp => {
+            let data = measurement.data.unwrap().get("iv").unwrap().to_string();
+            let data = serde_json::from_str::<Vec<Measurement>>(data.as_str()).unwrap();
+
+            let file_name = "Train_".to_string()
+                + i32::to_string(&measurement.id).as_str()
+                + "__"
+                + measurement
+                    .date
+                    .to_rfc3339_opts(SecondsFormat::Secs, true)
+                    .replace(":", "_")
+                    .as_str()
+                + ".csv";
+
+            println!("File name: {}", file_name);
+
+            let mut f = File::create(file_name.to_owned()).expect("Could not open file");
+
+            for point in data {
+                match point.current {
+                    Some(current) => {
+                        writeln!(f, "{},{},{}", point.voltage, current, point.time)?;
+                    }
+                    None => {
+                        writeln!(f, "{} {}", point.voltage, point.time)?;
+                    }
+                }
+            }
+
+            Ok(NamedFile::open(file_name)?)
+        }
+        _ => panic!(),
     }
 }

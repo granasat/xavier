@@ -5,11 +5,11 @@ import math, { formatCfg } from '../../utils/math'
 
 import { StdpWaveform, VoltageWaveform } from '../../routes/wgfmu/MeasurementsControls/types'
 import { MeasurementData } from '../../utils/types'
-import { Dimensions, Movement } from './types'
+import { Area, Dimensions, Movement, Svg } from './types'
 import React from 'react'
-import StdpControls from '../../routes/wgfmu/MeasurementsControls/StdpControls'
 
 import * as stdp from './plots/stdp'
+import * as stdpCollection from './plots/stdpCollection'
 import * as measurement from './plots/measurement'
 import * as voltage from './plots/voltage'
 
@@ -28,7 +28,30 @@ function isVoltageWaveform(data: Data): boolean {
     return !isStdpWaveform(data) && !isMeasurement(data)
 }
 
-export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimensions: Dimensions) {
+export type Graph = {
+    "getParameters": (data: any, dimensions: Dimensions) => any
+    "appendAxis": (area: Area, params: any) => void,
+    "appendPaths": (svg: Svg, params: any) => void,
+    "transformPathsMovement": (area: Area, params: any, movement: Movement, transition: boolean) => void,
+    "zoom": (area: Area, params: any, movement: Movement, extent: [number, number]) => void,
+    "restoreDomain": (area: Area, params: any) => void,
+}
+
+export type ImplementedGraphs = {
+    "stdp": Graph,
+    "stdpCollection": Graph,
+    "ivMeasurement": Graph,
+    "voltage": Graph,
+}
+
+export const IMPLEMENTED_GRAPHS: ImplementedGraphs = {
+    "stdp": stdp,
+    "stdpCollection": stdpCollection,
+    "ivMeasurement": measurement,
+    "voltage": voltage
+}
+
+export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimensions: Dimensions, type: keyof ImplementedGraphs) {
     if (dimensions === undefined) {
         return
     }
@@ -61,33 +84,14 @@ export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimens
         .on("end", updateChart)               // Each time the brush selection changes, trigger the 'updateChart' function
 
     let parameters: Parameters | null = null
-    // Get parameters
-    if (isMeasurement(data))
-        parameters = measurement.getParameters(data as MeasurementData, dimensions)
-    else if (isStdpWaveform(data))
-        parameters = stdp.getParameters(data as StdpWaveform, dimensions)
-    else if (isVoltageWaveform(data))
-        parameters = voltage.getParameters(data as VoltageWaveform, dimensions)
-    
+    // Get parameters    
+    parameters = IMPLEMENTED_GRAPHS[type].getParameters(data, dimensions)
+
     // Append axis
-    if (isMeasurement(data) && parameters)
-        measurement.appendAxis(svg, parameters as measurement.MeasurementGraphParameters)
-    else if (isStdpWaveform(data) && parameters)
-        stdp.appendAxis(svg, parameters as stdp.StdpGraphParameters)
-    else if (isVoltageWaveform(data) && parameters)
-        voltage.appendAxis(svg, parameters as voltage.VoltageGraphParameters)
-    
+    IMPLEMENTED_GRAPHS[type].appendAxis(svg, parameters)
 
     // TODO - Append paths
-    if (isMeasurement(data) && parameters)
-        measurement.appendPaths(area, parameters as measurement.MeasurementGraphParameters)
-    else if (isStdpWaveform(data) && parameters)
-        stdp.appendPaths(area, parameters as stdp.StdpGraphParameters)
-    else if (isVoltageWaveform(data) && parameters)
-        voltage.appendPaths(area, parameters as voltage.VoltageGraphParameters)
-
-
-    // d3.select("svg").on("dblclick.zoom", null)
+    IMPLEMENTED_GRAPHS[type].appendPaths(area, parameters)
 
     // Add the brushing
     area
@@ -102,19 +106,12 @@ export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimens
         .on("mousedown.zoom", null)
         .on("wheel.zoom", null) // disables default zoom wheel behavior
         .on("wheel", pan)
-        .on("dblclick.zoom", () => {console.log("double click!")})
+        .on("dblclick.zoom", () => {})
+
 
     function pan(ev: any) {
-
         zoomer.translateBy(svg, ev.wheelDeltaY / 10, 0)
-        
-        if (isMeasurement(data) && parameters)
-            measurement.transformPathsMovement(area, parameters as measurement.MeasurementGraphParameters, movement, false)
-        else if (isStdpWaveform(data) && parameters)
-            stdp.transformPathsMovement(area, parameters as stdp.StdpGraphParameters, movement, false)
-        else if (isVoltageWaveform(data) && parameters)
-            voltage.transformPathsMovement(area, parameters as voltage.VoltageGraphParameters, movement, false)
-
+        IMPLEMENTED_GRAPHS[type].transformPathsMovement(area, parameters, movement, false)
     }
 
     let movement: Movement = { k: 1, x: 0, y: 0 }
@@ -137,39 +134,20 @@ export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimens
             // if (!idleTimeout) return idleTimeout = setTimeout(idled, 350) // This allows to wait a little bit
             // x.domain([4, 8])
         } else {
-            console.log('hah')
             if (movement) {
-                if (isMeasurement(data) && parameters)
-                    measurement.zoom(area, parameters as measurement.MeasurementGraphParameters, movement, extent)
-                else if (isStdpWaveform(data) && parameters)
-                    stdp.zoom(area, parameters as stdp.StdpGraphParameters, movement, extent)
-                else if (isVoltageWaveform(data) && parameters)
-                    voltage.zoom(area, parameters as voltage.VoltageGraphParameters, movement, extent)
-
+                IMPLEMENTED_GRAPHS[type].zoom(area, parameters, movement, extent)
                 movement.x = 0
 
             } else {
-
-                if (isMeasurement(data) && parameters)
-                    measurement.restoreDomain(area, parameters as measurement.MeasurementGraphParameters)
-                else if (isStdpWaveform(data) && parameters)
-                    stdp.restoreDomain(area, parameters as stdp.StdpGraphParameters)
-                else if (isVoltageWaveform(data) && parameters)
-                    voltage.restoreDomain(area, parameters as voltage.VoltageGraphParameters)
-                // x.domain([x.invert(extent[0]), x.invert(extent[1])])
+                IMPLEMENTED_GRAPHS[type].restoreDomain(area, parameters)
             }
-            // area.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+
             area.select(".brush").remove()
         }
 
         // Update axis and area position
-        if (isMeasurement(data) && parameters)
-            measurement.transformPathsMovement(area, parameters as measurement.MeasurementGraphParameters, movement, true)
-        else if (isStdpWaveform(data) && parameters)
-            stdp.transformPathsMovement(area, parameters as stdp.StdpGraphParameters, movement, true)
-        else if (isVoltageWaveform(data) && parameters)
-            voltage.transformPathsMovement(area, parameters as voltage.VoltageGraphParameters, movement, true)
-        
+        IMPLEMENTED_GRAPHS[type].transformPathsMovement(area, parameters, movement, true)
+
         area
             .append("g")
             .attr("class", "brush")
@@ -184,26 +162,15 @@ export function graph(svgRef: React.RefObject<SVGSVGElement>, data: Data, dimens
         } catch {}
 
 
-
-        if (isMeasurement(data) && parameters)
-            measurement.restoreDomain(area, parameters as measurement.MeasurementGraphParameters)
-        else if (isStdpWaveform(data) && parameters)
-            stdp.restoreDomain(area, parameters as stdp.StdpGraphParameters)
-        else if (isVoltageWaveform(data) && parameters)
-            voltage.restoreDomain(area, parameters as voltage.VoltageGraphParameters)
+        IMPLEMENTED_GRAPHS[type].restoreDomain(area, parameters)
 
         zoomer.translateBy(svg.transition().duration(500), -movement.x, 0)
 
         movement = {k:1, x: 0, y:0}
 
         // Update axis and area position
-        if (isMeasurement(data) && parameters)
-            measurement.transformPathsMovement(area, parameters as measurement.MeasurementGraphParameters, movement, true)
-        else if (isStdpWaveform(data) && parameters)
-            stdp.transformPathsMovement(area, parameters as stdp.StdpGraphParameters, movement, true)
-        else if (isVoltageWaveform(data) && parameters)
-            voltage.transformPathsMovement(area, parameters as voltage.VoltageGraphParameters, movement, true)
-        
+        IMPLEMENTED_GRAPHS[type].transformPathsMovement(area, parameters, movement, true)
+
     });
 }
 

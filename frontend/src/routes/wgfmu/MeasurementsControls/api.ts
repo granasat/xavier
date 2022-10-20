@@ -1,9 +1,13 @@
-import { PulseControls, StdpControls } from './types'
+import { PulseControls, StdpCollectionControls, StdpControls } from './types'
 import math from '../../../utils/math'
+import { ConductanceMeasurement } from '../../../utils/types'
 
 const MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/"
 const PULSE_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/pulse"
 const STDP_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/stdp"
+const STDP_COLLECTION_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/stdp-collection"
+const CONDUCTANCE_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/conductance"
+
 
 export async function pulseMeasurement(params: PulseControls, avgTime: string) {
 
@@ -58,6 +62,51 @@ export async function stdpMeasurement(params: StdpControls, avgTime: string) {
         redirect: 'follow',
         referrerPolicy: 'no-referrer',
         body: JSON.stringify(reqParams)
+    })
+
+    return response.json()
+}
+
+export async function stdpCollectionMeasurement(params: StdpCollectionControls, avgTime: string) {
+
+    let reqParams = {
+        amplitude: math.unit(params.amplitude).value,
+        delayPoints: parseInt(params.delayPoints),
+        waitTime: math.unit(params.waitTime).value,
+        pulseDuration: math.unit(params.pulseDuration).value,
+        stdpType: params.stdpType,
+        nPoints: parseInt(params.nPoints),
+        avgTime: math.unit(avgTime).value
+    }
+
+    const response = await fetch(STDP_COLLECTION_MEASUREMENT_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json'
+          },
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        body: JSON.stringify(reqParams)
+    })
+
+    return response.json()
+}
+
+export async function conductanceMeasurement() {
+
+    const response = await fetch(CONDUCTANCE_MEASUREMENT_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json'
+          },
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
     })
 
     return response.json()

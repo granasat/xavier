@@ -35,6 +35,15 @@ export interface StdpControls {
     nPoints: string
 }
 
+export interface StdpCollectionControls {
+    delayPoints: string,
+    amplitude: string,
+    pulseDuration: string,
+    waitTime: string,
+    stdpType: "Depression" | "Potenciation",
+    nPoints: string
+}
+
 export interface StdpWaveform {
     waveformA: VoltageWaveform // not delayed
     waveformB: VoltageWaveform // delayed

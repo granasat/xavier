@@ -35,7 +35,10 @@ export interface MeasurementGraphParameters {
 export function getParameters(data: MeasurementData, dimensions: Dimensions): MeasurementGraphParameters {
 
     let timeScaling = getScaling<MeasurementPoint>(data, 's', (d) => d.time)
-    let currentScaling = getScaling<MeasurementPoint>(data, 'A', (d) => d.current)
+    let currentScaling = getScaling<MeasurementPoint>(data, 'A', (d) => Math.abs(d.current))
+
+    // console.log('currentScaling')
+    // console.log(currentScaling)
 
     let xExtentTime: [number, number] = [0, 0]
     let aux = d3.extent(data, d => d.time * timeScaling.scalingFactor)
@@ -67,7 +70,7 @@ export function getParameters(data: MeasurementData, dimensions: Dimensions): Me
         current: (
             d3.line<{ time: number, current: number }>()
                 .x(d => xTime(d.time * timeScaling.scalingFactor))
-                .y(d => yCurrent(d.current ? d.current * currentScaling.scalingFactor : 0))
+                .y(d => yCurrent(d.current * currentScaling.scalingFactor))
         )
     }
 
@@ -129,7 +132,7 @@ export function appendAxis(svg: Svg, params: MeasurementGraphParameters) {
     Object.entries(defaults.rightAxisTicks).forEach(([key, value]) => {
         rightAxisTicks = rightAxisTicks.attr(key, value(defaultParameters))
     })
-    rightAxisTicks.call(d3.axisRight(params.yVoltage))
+    rightAxisTicks.call(d3.axisRight(params.yCurrent))
     rightAxisTicks.attr('font-size', (defaults.rightAxisTicks['font-size'])(defaultParameters))
     params.yAxisCurrent = rightAxisTicks
 
@@ -212,3 +215,55 @@ export function restoreDomain(area: Area, params: MeasurementGraphParameters) {
         params.xExtentTime[1]
     ])
 }
+
+// export function createCursor(svg: Svg, params: MeasurementGraphParameters) {
+//     let width = params.dimensions.width - params.dimensions.margin.right - params.dimensions.margin.left
+//     let height = params.dimensions.height - params.dimensions.margin.top - params.dimensions.margin.bottom
+    
+//     svg
+//         .append('rect')
+//         .style("fill", "none")
+//         .style("pointer-events", "all")
+//         .attr('width', width)
+//         .attr('height', height)
+//         .on('mouseover', mouseOver)
+//         .on('mousemove', mouseMove)
+//         .on('mouseout', mouseOut)
+
+//     let focus = svg
+//         .append('g')
+//         .append('circle')
+//             .style("fill", "none")
+//             .attr("stroke", "black")
+//             .attr('r', 8.5)
+//             .style("opacity", 0)
+
+//     let focusText = svg
+//         .append('g')
+//         .append('text')
+//             .style("opacity", 0)
+//             .attr("text-anchor", "left")
+//             .attr("alignment-baseline", "middle")
+
+//     function mouseOver() {
+
+//     }
+
+//     function mouseMove(event) {
+//         // recover coordinate we need
+//         var x0 = params.xTime.invert(d3.mouse(svg)[0]);
+//         var i = d3.bisect(params.data, x0, 1);
+//         selectedData = params.data[i]
+//         focus
+//             .attr("cx", x(selectedData.x))
+//             .attr("cy", y(selectedData.y))
+//         focusText
+//             .html("x:" + selectedData.x + "  -  " + "y:" + selectedData.y)
+//             .attr("x", params.xTime(selectedData.x)+15)
+//             .attr("y", params.yCurrent(selectedData.y))
+//     }
+
+//     function mouseOut() {
+
+//     }
+// }

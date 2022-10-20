@@ -1,24 +1,23 @@
+use log::error;
 use std::str::FromStr;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use std::sync::mpsc::{self, Sender, Receiver};
-use log::{error};
 
-use crate::b1500::measure::{measure_pulse_fastiv};
+use crate::b1500::measure::measure_pulse_fastiv;
 use crate::b1500::wgfmu::{self, driver::Measurement};
 use crate::AppState;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
-use actix_web::{web, HttpResponse, Responder};
 use actix_web::rt::spawn;
+use actix_web::{web, HttpResponse, Responder};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use entity::sea_orm::{ActiveModelTrait, Set};
 
-use entity::measurement;
 use super::types::{ErrorJson, MeasurementRef};
-
+use entity::measurement;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -87,11 +86,12 @@ pub async fn pulse_measurement(
     if app.measuring {
         return HttpResponse::Conflict()
             .content_type(ContentType::json())
-            .body((
-                ErrorJson {
-                    error: "Another measurement is already in progress.".to_string()
-                }
-            ).to_string());
+            .body(
+                (ErrorJson {
+                    error: "Another measurement is already in progress.".to_string(),
+                })
+                .to_string(),
+            );
     }
 
     let params_str = serde_json::to_string(&params).unwrap();
@@ -108,14 +108,20 @@ pub async fn pulse_measurement(
     if measurement.is_err() {
         return HttpResponse::InternalServerError()
             .content_type(ContentType::json())
-            .body((ErrorJson {
-                error: "Could not insert measurement in database.".to_string()
-            }).to_string());
+            .body(
+                (ErrorJson {
+                    error: "Could not insert measurement in database.".to_string(),
+                })
+                .to_string(),
+            );
     }
-    
+
     let id = measurement.unwrap().id as usize;
 
-    let (tx, rx): (Sender<Result<Vec<Measurement>, wgfmu::Error>>, Receiver<Result<Vec<Measurement>, wgfmu::Error>>) = mpsc::channel();
+    let (tx, rx): (
+        Sender<Result<Vec<Measurement>, wgfmu::Error>>,
+        Receiver<Result<Vec<Measurement>, wgfmu::Error>>,
+    ) = mpsc::channel();
 
     thread::spawn(move || {
         let result = measure_pulse_fastiv(
@@ -134,10 +140,11 @@ pub async fn pulse_measurement(
     });
 
     spawn(async move {
-
         let result = rx.recv().unwrap();
 
-        let measurement = measurement::Entity::find_by_id(id as i32).one(app.db.get_connection()).await;
+        let measurement = measurement::Entity::find_by_id(id as i32)
+            .one(app.db.get_connection())
+            .await;
         if measurement.is_err() {
             return;
         }
@@ -147,21 +154,17 @@ pub async fn pulse_measurement(
         }
 
         let mut measurement: measurement::ActiveModel = measurement.unwrap().into();
-        
+
         match result {
             Ok(data) => {
                 measurement.status = Set(measurement::Status::Done);
 
                 let data_str = serde_json::to_string(&data).unwrap();
 
-                measurement.data = Set(
-                    Some(
-                        Value::from_str(data_str.as_str()).unwrap()
-                    )
-                );
+                measurement.data = Set(Some(Value::from_str(data_str.as_str()).unwrap()));
 
                 measurement.update(app.db.get_connection()).await.unwrap();
-            },
+            }
             Err(err) => {
                 error!("--------------------");
                 error!("--------------------");
@@ -174,7 +177,7 @@ pub async fn pulse_measurement(
             }
         };
     });
-    
+
     let measurement_ref = MeasurementRef { id };
     let res_body = serde_json::to_string(&measurement_ref).unwrap();
 

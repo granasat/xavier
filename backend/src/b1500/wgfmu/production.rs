@@ -1,17 +1,16 @@
-use libloading::{Library, Symbol};
-use num_traits::{FromPrimitive};
-use std::ffi::{CString};
-use std::os::raw::{c_double, c_int};
 use lazy_static::lazy_static;
+use libloading::{Library, Symbol};
+use log::info;
+use num_traits::FromPrimitive;
+use std::ffi::CString;
+use std::os::raw::{c_char, c_double, c_int};
 
-use super::types::*;
 use super::driver::*;
+use super::types::*;
 // WGFMU Library rust bindings, see https://l4.granasat.space/docs/B1500A/wgfmu/programming_guide for more details.
 
 lazy_static! {
-    static ref DLL: Library = unsafe {
-        Library::new("./wgfmu.dll").unwrap()
-    };
+    static ref DLL: Library = unsafe { Library::new("./wgfmu.dll").unwrap() };
 }
 
 #[allow(dead_code)]
@@ -225,15 +224,13 @@ impl<'a> WgfmuDriver<ProductionWgfmu<'a>> for ProductionWgfmu<'a> {
         let res = get_result(ret);
         match res {
             Ok(_) => res,
-            Err(err) => {
-                match err {
-                    Error::ContextError => {
-                        self.close_session().unwrap();
-                        self.open_session(instrument)
-                    },
-                    _ => Result::Err(err)
+            Err(err) => match err {
+                Error::ContextError => {
+                    self.close_session().unwrap();
+                    self.open_session(instrument)
                 }
-            }
+                _ => Result::Err(err),
+            },
         }
     }
 
@@ -265,6 +262,12 @@ impl<'a> WgfmuDriver<ProductionWgfmu<'a>> for ProductionWgfmu<'a> {
     }
 
     fn add_vector(&mut self, pattern: &str, d_time: f64, voltage: f64) -> Res {
+        let mut d_time = d_time;
+
+        if !(d_time > 0.0) {
+            d_time = 1e-8;
+        }
+
         let ret;
         unsafe {
             let pattern = CString::new(pattern).unwrap();
@@ -402,6 +405,11 @@ impl<'a> WgfmuDriver<ProductionWgfmu<'a>> for ProductionWgfmu<'a> {
         let mut meas_vec = Vec::<Measurement>::new();
         unsafe {
             let measurement_size = self.get_measure_value_size(chan_id as i32)?;
+            let measurement_size1 = self.get_measure_value_size(101 as i32)?;
+            info!(
+                "Size 102: {}\nSize 101: {}",
+                measurement_size, measurement_size1
+            );
             let op_mode = self.get_operation_mode(chan_id as i32)?;
             match op_mode {
                 OperationMode::OperationModeFastIV => {
@@ -419,8 +427,7 @@ impl<'a> WgfmuDriver<ProductionWgfmu<'a>> for ProductionWgfmu<'a> {
                         let mut time = 0.0;
                         let time = &mut time as *mut c_double;
 
-                        let ret =
-                            (self.get_measure_value)(chan_id as i32, i as c_int, time, current);
+                        let ret = (self.get_measure_value)(101 as i32, i as c_int, time, current);
                         get_result(ret)?;
 
                         let ret =
@@ -439,8 +446,29 @@ impl<'a> WgfmuDriver<ProductionWgfmu<'a>> for ProductionWgfmu<'a> {
             }
         }
     }
-}
 
+    fn do_self_calibration(&mut self) -> Res {
+        let ret;
+        unsafe {
+            let mut result = 0;
+            let result = &mut result as *mut c_int;
+
+            let string: &str = "Hello, world!";
+            let bytes: Vec<u8> = String::from(string).into_bytes();
+            let mut c_chars: Vec<i8> = bytes.iter().map(|c| *c as i8).collect::<Vec<i8>>();
+
+            c_chars.push(0); // null terminator
+
+            let detail: *mut c_char = c_chars.as_mut_ptr();
+
+            let mut size = string.len() as i32;
+            let size = &mut size as *mut c_int;
+
+            ret = (self.do_self_calibration)(result, detail, size);
+        }
+        get_result(ret)
+    }
+}
 
 impl<'a> ProductionWgfmu<'a> {
     fn get_measure_value_size(&mut self, chan_id: i32) -> Result<u32, Error> {
@@ -458,7 +486,6 @@ impl<'a> ProductionWgfmu<'a> {
         }
     }
 }
-
 
 // impl<'a> Deref for ProductionWgfmu<'a> {
 

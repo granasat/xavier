@@ -1,5 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 use std::{error, fmt, sync::PoisonError};
 
 #[allow(dead_code)]
@@ -19,7 +19,7 @@ pub enum Status {
     Idle = 10006,
 }
 
-#[derive(FromPrimitive, ToPrimitive, Debug)]
+#[derive(FromPrimitive, ToPrimitive, Debug, Serialize, Deserialize)]
 pub enum Error {
     MutexUnlockError,
     NotImplemented,
@@ -43,14 +43,14 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             // Error::NotImplemented(ref err) => write!(f, "RPPAL Spi error: {}", err),
-            _ => write!(f, "WGFMU error:")
+            _ => write!(f, "WGFMU error:"),
         }
     }
 }
 
 impl error::Error for Error {}
 
-impl<T>From<PoisonError<T>> for Error {
+impl<T> From<PoisonError<T>> for Error {
     fn from(_: PoisonError<T>) -> Error {
         Error::MutexUnlockError
     }
@@ -66,7 +66,7 @@ pub enum OperationMode {
 
 #[derive(FromPrimitive, ToPrimitive, Debug)]
 pub enum MeasureMode {
-    MesureModeVoltage = 4000,
+    MeasureModeVoltage = 4000,
     MeasureModeCurrent = 4001,
 }
 
@@ -90,7 +90,7 @@ pub trait WgfmuDriver<T> {
     fn open_session(&mut self, instrument: &str) -> Res;
     fn close_session(&mut self) -> Res;
     fn clear(&mut self) -> Res;
-    fn create_pattern<'a>(&mut self, pattern: &'a str, init_v: f64) -> Res ;
+    fn create_pattern<'a>(&mut self, pattern: &'a str, init_v: f64) -> Res;
     fn add_vector<'a>(&mut self, pattern: &'a str, d_time: f64, voltage: f64) -> Res;
     fn set_measure_event(
         &mut self,
@@ -113,4 +113,5 @@ pub trait WgfmuDriver<T> {
     fn execute(&mut self) -> Res;
     fn wait_until_completed(&mut self) -> Res;
     fn get_measure_values(&mut self, chan_id: usize) -> Result<Vec<Measurement>, Error>;
+    fn do_self_calibration(&mut self) -> Res;
 }

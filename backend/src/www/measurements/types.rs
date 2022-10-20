@@ -1,15 +1,15 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MeasurementRef {
-    pub id: usize
+    pub id: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorJson {
-    pub error: String
+    pub error: String,
 }
 
 impl ErrorJson {
@@ -20,6 +20,6 @@ impl ErrorJson {
 
 // #[derive(Serialize, Deserialize, Debug)]
 // pub enum Error {
-//     DbInsertError(String)    
-//     DbInserError(String)    
+//     DbInsertError(String)
+//     DbInserError(String)
 // }
