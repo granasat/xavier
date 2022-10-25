@@ -11,7 +11,7 @@ import Visualizer from './Visualizer'
 import SciNumberInput from '../../components/Input/SciNumberInput'
 import MeasurementsDropdown from './MeasurementsDropdown'
 import { calibrate } from '../../store/api';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 
 type MeasurementType = "pulse" | "ramp";
 
@@ -45,6 +45,7 @@ const measurementAction = [
     measureStdp // page 1
 ]
 
+const duration = 0.4
 
 export default function Wgfmu() {
 
@@ -67,7 +68,7 @@ export default function Wgfmu() {
 
 
     return (
-        <div className='flex flex-col h-full w-full absolute'>
+        <div className='flex flex-col h-full w-full relative'>
             <TopBar>
                 <div className="h-full w-full flex justify-between">
                     <div className='flex'>
@@ -126,25 +127,31 @@ export default function Wgfmu() {
                     </div>
                 </div>
             </TopBar>
-            <div className="w-full h-full flex">
+            <div className="w-full h-full flex relative">
                 <AnimatePresence>
                     {sideBar && (
                         <>
                             <motion.div
-                                initial={{ x: "-100%" }}
+                                initial={{
+                                    x: "-100%",
+                                    // width: "10rem"
+                                }}
                                 animate={{
-                                    x: 0
+                                    x: 0,
+                                    // width: "15rem"
                                 }}
                                 exit={{
-                                    x: "100%"
+                                    x: "-100%",
+                                    // width: "10rem"
                                 }}
-                                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-                                className="flex flex-col border-r-[1px] border-neutral-600 w-60"                >
-                                <div id="measurement-types" className="px-5 py-2 flex flex-col border-b border-neutral-600">
-                                    <div className="font-semibold text-xl mb-2 w-full text-center">
+                                transition={{ type: "spring", bounce: 0, duration }}
+                                className="flex flex-col border-r-[1px] border-neutral-600 h-full z-30 bg-neutral-800 w-60"
+                            >
+                                <motion.div id="measurement-types" className="px-2 py-2 flex flex-col border-b border-neutral-600 relative">
+                                    <motion.div className="font-semibold text-xl mb-2 w-full text-center">
                                         Measurement Types
-                                    </div>
-                                    <div className='flex justify-around'>
+                                    </motion.div>
+                                    <motion.div className='flex justify-around'>
                                         <MeasurementTypeItem
                                             href='pulse-measurement'
                                             measurementType='pulse'
@@ -162,27 +169,72 @@ export default function Wgfmu() {
                                         >
                                             <TbWaveSawTool size={25}></TbWaveSawTool>
                                         </MeasurementTypeItem>
-                                    </div>
-                                </div>
-                                <div className='grow overflow-x-hidden px-2'>
+                                    </motion.div>
+                                    <motion.div className='absolute -bottom-[1rem] left-0 w-full flex justify-center z-20'>
+                                        <button
+                                            className='border-solid border-[1px] border-neutral-600 rounded-full bg-neutral-800 hover:bg-neutral-600 p-1 ease-out duration-200'
+                                            onClick={() => setSideBar((s) => !s)}
+                                        >
+                                            <svg className="h-5 w-5 sm:h-5 sm:w-5 rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 -0.5 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </motion.div>
+                                </motion.div>
+                                <motion.div className='grow overflow-x-hidden px-2'>
                                     <Tabs
                                         tabs={tabs}
                                         direction={direction as -1 | 1}
                                         page={page}
                                         paginate={paginate}
                                     ></Tabs>
-                                </div>
+                                </motion.div>
                             </motion.div>
                         </>
                     )}
                 </AnimatePresence>
 
-
-                <div className='grow relative overflow-auto'>
+                <AnimatePresence>
+                
+                <motion.div
+                    className={'h-full grow ' + (sideBar ? "relative" : "w-full absolute")}
+                    transition={{ type: "spring", bounce: 0, duration}}
+                    layoutId="visualizer"
+                >
                     <div className='absolute w-full h-full flex flex-col'>
-                        <Visualizer></Visualizer>
+                        <Visualizer sideBar></Visualizer>
                     </div>
-                </div>
+                    <AnimatePresence>
+                        {!sideBar && (
+                            <>
+                                <motion.div
+                                    initial={{ x: "-400%" }}
+                                    animate={{
+                                        x: 0
+                                    }}
+                                    exit={{
+                                        x: "-100%"
+                                    }}
+                                    transition={{ type: "spring", bounce: 0, duration: 0.8 }}
+                                    className='h-full absolute flex flex-col justify-center z-10 -left-[0.8rem]'
+                                >
+                                    <button
+                                        className='border-solid border-[1px] border-neutral-600 rounded-full bg-neutral-800 hover:bg-neutral-600 p-1 ease-out duration-200'
+                                        onClick={() => setSideBar((s) => !s)}
+                                    >
+                                        <svg className="h-8 w-h-8 sm:h-5 sm:w-5 -rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 -0.5 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+                </AnimatePresence>
+
+
+
             </div>
         </div>
     )

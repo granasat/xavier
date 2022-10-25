@@ -125,7 +125,7 @@ pub async fn pulse_measurement(
 
     thread::spawn(move || {
         let result = measure_pulse_fastiv(
-            "b1500gpib",
+            Some("b1500gpib"),
             params.n_pulses,
             params.duty_cycle,
             params.cycle_time,

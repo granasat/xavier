@@ -83,7 +83,7 @@ export default function MeasurementsDropdown() {
             <div className="h-full">
                 <button
                     type="button"
-                    className="text-sm sm:text-md inline flex w-full h-full justify-center rounded-md px-1 sm:px-4 shadow-sm" id="menu-button" aria-expanded="true" aria-haspopup="true"
+                    className="text-sm sm:text-md flex w-full h-full justify-center rounded-md px-1 sm:px-4 shadow-sm" id="menu-button" aria-expanded="true" aria-haspopup="true"
                     onClick={() => setOpen((prevVal) => !prevVal)}
                 >   
                     <div className="h-full flex flex-col justify-center">
@@ -100,7 +100,7 @@ export default function MeasurementsDropdown() {
             <AnimatePresence>
             {open &&
                 <motion.div
-                    className="absolute left-0 z-10 w-80 origin-top-left focus:outline-none bg-[#242424] border-t border-solid border-r-4 border-b-4 rounded-br-xl border-neutral-600 max-h-96 overflow-hidden"
+                    className="absolute left-0 z-[100] w-80 origin-top-left focus:outline-none bg-[#242424] border-t border-solid border-r-4 border-b-4 rounded-br-xl border-neutral-600 max-h-96 overflow-hidden"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="menu-button"

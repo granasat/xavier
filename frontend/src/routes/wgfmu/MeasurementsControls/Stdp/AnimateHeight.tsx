@@ -40,7 +40,7 @@ function AnimateHeight({ isOpen, children }: Props) {
                         },
                     }}
                     key="test"
-                    className="text-lg font-light"
+                    className="text-lg font-light w-full"
                 >
                     {children}
                 </motion.div>

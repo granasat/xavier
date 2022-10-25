@@ -21,7 +21,7 @@ pub async fn calibrate(app: web::Data<AppState>) -> impl Responder {
 
     info!("Calibrating!");
 
-    let result = match web::block(move || measure::calibrate("b1500gpib")).await {
+    let result = match web::block(move || measure::calibrate(Some("b1500gpib"))).await {
         Ok(res) => res,
         Err(err) => {
             return HttpResponse::InternalServerError()

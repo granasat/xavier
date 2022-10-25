@@ -5,7 +5,7 @@ use std::thread;
 
 use crate::b1500::measure::{
     measure_conductance_fastiv, measure_stdp_collection_fastiv, measure_stdp_fastiv,
-    StdpCollectionMeasurement, StdpMeasurement, StdpType,
+    StdpCollectionMeasurement, StdpMeasurement, StdpType, StdpCollectionMeasMode,
 };
 use crate::b1500::wgfmu;
 use crate::AppState;
@@ -94,7 +94,7 @@ pub async fn stdp_measurement(
 
     thread::spawn(move || {
         let result = measure_stdp_fastiv(
-            "b1500gpib",
+            Some("b1500gpib"),
             params.delay,
             params.amplitude,
             params.pulse_duration,
@@ -234,6 +234,7 @@ pub async fn stdp_collection_measurement(
             params.stdp_type,
             params.n_points,
             params.avg_time,
+            StdpCollectionMeasMode::ForceConductanceMeasurement
         );
 
         tx.send(result).unwrap();
@@ -305,7 +306,7 @@ pub async fn conductance_measurement(app: web::Data<AppState>) -> impl Responder
             );
     }
 
-    let result = match web::block(move || measure_conductance_fastiv("b1500gpib")).await {
+    let result = match web::block(move || measure_conductance_fastiv(Some("b1500gpib"))).await {
         Ok(res) => res,
         Err(err) => {
             return HttpResponse::InternalServerError()

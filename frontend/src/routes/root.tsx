@@ -7,7 +7,7 @@ export default function Root() {
   const [sideBar, setSideBar] = useState(true)
 
   return (
-    <div className="flex xs:flex-col  w-screen h-screen">
+    <div className="flex flex-col-reverse sm:flex-row w-screen h-screen">
       {/* <AnimatePresence>
         {sideBar && (
           <>
@@ -29,7 +29,7 @@ export default function Root() {
         }
       </AnimatePresence> */}
       <div
-        className="flex-none"
+        className="flex-none z-50 bg-neutral-800"
       >
         <Sidebar />
 
@@ -38,7 +38,7 @@ export default function Root() {
 
       {/* <div className="flex-none">
         </div> */}
-      <div className="grow relative">
+      <div className="grow relative z-20">
         <Outlet />
       </div>
     </div>

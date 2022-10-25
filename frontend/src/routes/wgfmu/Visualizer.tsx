@@ -66,36 +66,38 @@ const initialDimensionsMobile: Dimensions = {
 const Graph = React.memo(GraphOrig)
 
 
-export default function Visualizer() {
+export default function Visualizer(props: any) {
     const waveformPoints = useAppSelector(selectWaveform)
     const measurement = useAppSelector(selectMeasurement)
     const timeScale = useAppSelector(selectTimeScale)
     const [dimensionChangedHelper, setDimensionChangedHelper] = useState(false)
     const [dimensions, setDimensions] = useState(initialDimensions)
     const [[page, direction], setPage] = useState([0, -1]);
-    const divCallback = useCallback((node: HTMLDivElement) => resizeGraphs(node), [dimensionChangedHelper, page])
+    const divCallback = useCallback((node: HTMLDivElement) => resizeGraphs(node), [dimensionChangedHelper, page, props])
 
     useEffect(() => {
         window.addEventListener("resize", () => {
+            // console.log("resize!")
             setDimensionChangedHelper(d => !d)
         })
     }, [])
 
     function resizeGraphs(node: HTMLDivElement) {
+        
         if (!node)
             return
-
+        
         let mobile = isMobile()
         let margin = clone(mobile ? initialDimensionsMobile.margin : initialDimensions.margin)
-        console.log(`mobile: ${mobile}`)
+        
         if (page == 0) { // Previsualization, no current so no right margin is needed
             // margin.right = 50
         }
 
-        console.log(`margin: ${margin.right}, ${margin.left}`)
+        
         setDimensions((d: Dimensions) => ({
             ...d,
-            width: Math.max(node.clientWidth - margin.left - margin.right, 900),
+            width: Math.max(node.clientWidth, 300) - margin.left - margin.right,
             height: Math.min(node.clientHeight - margin.top - margin.bottom - 32 - 8, 600),
             margin: margin
             // height: node.clientHeight*.9 - d.margin.top - d.margin.bottom,
@@ -132,9 +134,12 @@ export default function Visualizer() {
 
 
     return (
-        <div className="w-full h-full flex flex-col justify-between items-center relative" ref={divCallback}>
-            <div className='w-full flex'>
-                <div className='grow'>
+        <div
+            className="w-full h-full flex flex-col justify-between items-center overflow-x-hidden" ref={divCallback}
+            // transition={{ type: "spring", bounce: 0, duration: 1 }}
+        >
+            <motion.div className='w-full flex'>
+                <motion.div className='grow'>
                     <button
                         className='w-full rounded-md text-2xl'
                         onClick={() => setPage([0, -1])}
@@ -144,8 +149,8 @@ export default function Visualizer() {
                     {page === 0 ? (
                         <motion.div className=" -mb-1 mx-0 h-1 bg-neutral-500" layoutId="underline" />
                     ) : null}
-                </div>
-                <div className='grow'>
+                </motion.div>
+                <motion.div className='grow'>
                     <button
                         className='w-full rounded-md text-2xl'
                         onClick={() => setPage([1, 1])}
@@ -155,8 +160,8 @@ export default function Visualizer() {
                     {page === 1 ? (
                         <motion.div className=" -mb-1 mx-0 h-1 bg-neutral-500" layoutId="underline" />
                     ) : null}
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
             <div className='w-full grow flex flex-col items-center justify-center pt-2'>
 
                 <Tabs
@@ -185,7 +190,7 @@ export default function Visualizer() {
                             y: "200%"
                         }}
                         transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-                        className='w-full flex justify-between items-center px-14 mb-10'
+                        className='w-full flex justify-between items-center px-2 sm:px-14 mb-10'
                     >
                             <div
                                 className={' text-white text-5xl font-bold' + (measurement.status == 'Error' ? ' text-red-600 ' : '')}

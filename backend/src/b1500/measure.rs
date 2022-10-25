@@ -16,7 +16,7 @@ pub fn round_10ns(n: f64) -> f64 {
 }
 
 pub fn measure_pulse_fastiv(
-    instrument: &str,
+    instrument: Option<&str>,
     n_pulses: usize,
     duty_cycle: f64,
     cycle_time: f64,
@@ -166,7 +166,9 @@ pub fn measure_pulse_fastiv(
     }
 
     info!("Initializing WGFMU");
-    wgfmu.open_session(instrument)?;
+    if instrument.is_some() {
+        wgfmu.open_session(instrument.unwrap())?;
+    }
     wgfmu.initialize()?;
 
     wgfmu.set_operation_mode(CHANNEL2, OperationMode::OperationModeFastIV)?;
@@ -186,7 +188,9 @@ pub fn measure_pulse_fastiv(
 
     info!("Measured event len {}", measurement.len());
 
-    wgfmu.close_session()?;
+    if instrument.is_some() {
+        wgfmu.close_session()?;
+    }
     Ok(measurement)
 }
 
@@ -203,7 +207,7 @@ pub struct StdpMeasurement {
 }
 
 pub fn measure_stdp_fastiv(
-    instrument: &str,
+    instrument: Option<&str>,
     delay: f64,
     amplitude: f64,
     pulse_duration: f64,
@@ -323,12 +327,15 @@ pub fn measure_stdp_fastiv(
                 )?;
             }
 
-            wgfmu.open_session(instrument)?;
+
+            if instrument.is_some() {
+                wgfmu.open_session(instrument.unwrap())?;
+            }
             wgfmu.initialize()?;
 
             wgfmu.set_operation_mode(CHANNEL2, OperationMode::OperationModeFastIV)?;
             wgfmu.set_operation_mode(CHANNEL1, OperationMode::OperationModeFastIV)?;
-            wgfmu.set_measure_mode(CHANNEL2, MeasureMode::MeasureModeCurrent)?;
+            wgfmu.set_measure_mode(CHANNEL2, MeasureMode::MeasureModeVoltage)?;
             wgfmu.set_measure_mode(CHANNEL1, MeasureMode::MeasureModeCurrent)?;
             wgfmu.connect(CHANNEL2)?;
             wgfmu.connect(CHANNEL1)?;
@@ -344,7 +351,9 @@ pub fn measure_stdp_fastiv(
 
         info!("Stdp measurement length: {}", measurement.len());
 
-        wgfmu.close_session()?;
+        if instrument.is_some() {
+            wgfmu.close_session()?;
+        }
     }
 
     std::thread::sleep(std::time::Duration::from_millis(1000)); // Litle wait before conductance measurement
@@ -361,7 +370,7 @@ pub fn measure_stdp_fastiv(
 #[serde(rename_all = "camelCase")]
 pub struct StdpMeasurementWrapper {
     stdp_measurement: StdpMeasurement,
-    delay: f64
+    delay: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -370,6 +379,20 @@ pub struct StdpCollectionMeasurement {
     base_conductance: f64,
     collection: Vec<StdpMeasurementWrapper>,
 }
+
+pub enum StdpCollectionMeasMode {
+    /*
+        Measurements will be sequential, with no repetitions
+    */
+    SequentialMeasurement,
+    /*
+        Will try to force a conductance change by repeating measurements
+        (either up or down depending on whether potenciation or depression is selected)
+    */
+    ForceConductanceMeasurement,
+}
+
+const MAX_FORCE_CONDUCTANCE_TRIES: usize = 3;
 
 pub fn measure_stdp_collection_fastiv(
     instrument: &str,
@@ -380,38 +403,81 @@ pub fn measure_stdp_collection_fastiv(
     stdp_type: StdpType,
     n_points: usize,
     avg_time: f64,
+    meas_mode: StdpCollectionMeasMode,
 ) -> Result<StdpCollectionMeasurement, Error> {
     info!(
         "Performing STDP Collection Measurement!\n\t{} delay points",
         delay_points
     );
 
+    {
+        let wgfmu = Arc::clone(&WGFMU);
+        let mut wgfmu = wgfmu.lock()?;
+        wgfmu.open_session(instrument)?;
+    }
+
     let max_delay = pulse_duration / 2.0;
 
-    let base_conductance = measure_conductance_fastiv(instrument)?;
+    let base_conductance = measure_conductance_fastiv(None)?;
 
     let mut delay: f64;
     let mut collection = vec![];
     for i in (0..delay_points).rev() {
         delay = max_delay / (delay_points as f64) * (i + 1) as f64;
-        collection.push(
-            StdpMeasurementWrapper {
-                stdp_measurement: measure_stdp_fastiv(
-                    instrument,
-                    delay,
-                    amplitude,
-                    pulse_duration,
-                    wait_time,
-                    n_points,
-                    avg_time,
-                    stdp_type,
-                )?,
-                delay: match stdp_type {
-                    StdpType::Depression => -delay,
-                    StdpType::Potenciation => delay
+
+        let get_meas = || -> Result<StdpMeasurementWrapper, Error> {
+            Ok(
+                StdpMeasurementWrapper {
+                    stdp_measurement: measure_stdp_fastiv(
+                        None,
+                        delay,
+                        amplitude,
+                        pulse_duration,
+                        wait_time,
+                        n_points,
+                        avg_time,
+                        stdp_type,
+                    )?,
+                    delay: match stdp_type {
+                        StdpType::Depression => -delay,
+                        StdpType::Potenciation => delay,
+                    },
                 }
+            )
+        };
+
+        let mut meas = get_meas()?;
+        match meas_mode {
+            StdpCollectionMeasMode::SequentialMeasurement => {
+                collection.push(meas);
+            },
+            StdpCollectionMeasMode::ForceConductanceMeasurement => {
+
+                let prev_conductance = if collection.len() == 0 { base_conductance } else { collection.last().unwrap().stdp_measurement.conductance };
+                let conductance_ok = |meas: StdpMeasurementWrapper| {
+                    match stdp_type {
+                        StdpType::Depression => meas.stdp_measurement.conductance <= prev_conductance,
+                        StdpType::Potenciation => meas.stdp_measurement.conductance >= prev_conductance
+                    }
+                };
+
+                let mut ntries = 0;
+                
+                while ntries < MAX_FORCE_CONDUCTANCE_TRIES && !conductance_ok(meas.clone()) {
+                    meas = get_meas()?;
+                    ntries += 1;
+                }
+
+                collection.push(meas);
             }
-        );
+        }
+        
+    }
+
+    {
+        let wgfmu = Arc::clone(&WGFMU);
+        let mut wgfmu = wgfmu.lock()?;
+        wgfmu.close_session()?;
     }
 
     Ok(StdpCollectionMeasurement {
@@ -420,7 +486,7 @@ pub fn measure_stdp_collection_fastiv(
     })
 }
 
-pub fn measure_conductance_fastiv(instrument: &str) -> Result<f64, Error> {
+pub fn measure_conductance_fastiv(instrument: Option<&str>) -> Result<f64, Error> {
     let wgfmu = Arc::clone(&WGFMU);
     let mut wgfmu = wgfmu.lock()?;
 
@@ -486,7 +552,9 @@ pub fn measure_conductance_fastiv(instrument: &str) -> Result<f64, Error> {
     }
 
     info!("Initializing WGFMU");
-    wgfmu.open_session(instrument)?;
+    if instrument.is_some() {
+        wgfmu.open_session(instrument.unwrap())?;
+    }
     wgfmu.initialize()?;
 
     wgfmu.set_operation_mode(CHANNEL2, OperationMode::OperationModeFastIV)?;
@@ -524,18 +592,22 @@ pub fn measure_conductance_fastiv(instrument: &str) -> Result<f64, Error> {
         None => acc,
     }) / ((measurement.len() - n_v_0) as f64);
 
-    wgfmu.close_session()?;
+    if instrument.is_some() {
+        wgfmu.close_session()?;
+    }
 
     Ok(conductance)
 }
 
-pub fn calibrate(instrument: &str) -> Result<(), Error> {
+pub fn calibrate(instrument: Option<&str>) -> Result<(), Error> {
     let wgfmu = Arc::clone(&WGFMU);
     let mut wgfmu = wgfmu.lock()?;
 
     wgfmu.clear()?;
 
-    wgfmu.open_session(instrument)?;
+    if instrument.is_some() {
+        wgfmu.open_session(instrument.unwrap())?;
+    }
     wgfmu.initialize()?;
 
     wgfmu.set_operation_mode(CHANNEL2, OperationMode::OperationModeFastIV)?;
@@ -547,7 +619,9 @@ pub fn calibrate(instrument: &str) -> Result<(), Error> {
 
     wgfmu.do_self_calibration()?;
 
-    wgfmu.close_session()?;
+    if instrument.is_some() {
+        wgfmu.close_session()?;
+    }
 
     Ok(())
 }

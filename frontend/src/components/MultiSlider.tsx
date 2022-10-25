@@ -43,8 +43,8 @@ export default function MultiSlider(props: Props) {
     }, [dimensions, props])
 
     return (
-        <div className='flex justify-center items-center w-full h-18'>
-            <div className='w-11/12 h-18' ref={containerRef}>
+        <div className='flex justify-center items-center w-full h-16'>
+            <div className='w-11/12' ref={containerRef}>
                 <svg
                     ref={svgRef}
                 />
@@ -63,6 +63,7 @@ function createSlider(svgRef: React.RefObject<SVGSVGElement>, props: Props, dime
     
     svgEl.selectAll("*").remove();
 
+    console.log(`H: ${height + margin.bottom}`)
 
     const svg = svgEl
         // .attr("width", width + margin.left + margin.right)

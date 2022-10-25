@@ -2,7 +2,7 @@ import { Number, Slider } from '../../../../components/Input'
 import math, { formatCfg, getValueFromUnit } from '../../../../utils/math'
 
 import { useState, useEffect } from 'react'
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
 import { useAppSelector, useAppDispatch } from '../../../../store/hooks'
 import { selectStdpParams, setStdpParamsField, setPoints, selectMeasurement, selectStdpMeasuredConductance, setStdpMeasuredConductance, selectStdpType, setStdpType, setStdpCollectionParamsField, selectStdpCollectionParams } from '../measurementControlsSlice'
 import { StdpControls as StdpControlsInterface, VoltageWaveform, StdpWaveform, StdpCollectionControls } from '../types'
@@ -173,8 +173,9 @@ export default function StdpControls() {
     return (
         <div className="w-full flex flex-col items-center overflow-hidden">
 
-            <div className="py-4 w-full border-b border-solid border-neutral-600 flex">
+            <div className="py-4 pt-6 w-full border-b border-solid border-neutral-600 flex">
                 <div className='p-2 w-full border border-solid flex justify-around items-center border-neutral-600 rounded-lg'>
+                    <LayoutGroup>
                     <button
                         className="font-bold rounded-lg w-full"
                         onClick={() => dispatch(setStdpType("Single"))}
@@ -201,6 +202,7 @@ export default function StdpControls() {
                             ) : null}
                         </div>
                     </button>
+                    </LayoutGroup>
                 </div>
             </div>
 
@@ -238,7 +240,8 @@ export default function StdpControls() {
             </AnimateHeight>
 
             <AnimateHeight isOpen={measurementType == "Collection"}>
-                <div className='pb-2 pt-2 w-full border-b border-solid border-neutral-600'>
+                <motion.div className='pb-2 pt-2 w-full border-b border-solid border-neutral-600 flex flex-col'>
+
 
                     <Number
                         label="Number of delay steps"
@@ -250,7 +253,7 @@ export default function StdpControls() {
                         min={1}
                         max={20}
                     />
-
+                    
                     <MultiSlider
                         max={maxDelay()}
                         min={0}
@@ -260,8 +263,9 @@ export default function StdpControls() {
                         unit={"s"}
                         label={"Delay"}
                     />
-                </div>
 
+                </motion.div>
+                {/* Hola */}
             </AnimateHeight>
 
 
@@ -329,6 +333,7 @@ export default function StdpControls() {
 
             <div className="py-4 w-full border-b border-solid border-neutral-600 flex">
                 <div className='p-2 w-full border border-solid flex-col justify-around items-center border-neutral-600 rounded-lg'>
+                    <LayoutGroup>
                     <button
                         className="font-bold rounded-lg w-full"
                         onClick={() => dispatch(setStdpParamsField({ val: "Depression", key: 'stdpType' }))}
@@ -356,6 +361,7 @@ export default function StdpControls() {
                             ) : null}
                         </div>
                     </button>
+                    </LayoutGroup>
                 </div>
             </div>
 
