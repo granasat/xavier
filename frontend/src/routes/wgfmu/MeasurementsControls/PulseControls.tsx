@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import { setPoints, setPulseParamsField, selectPulseParams, setTimeScale } from './measurementControlsSlice';
 import { VoltageWaveform } from './types'
 import math from '../../../utils/math'
+import SciNumberInput from '../../../components/Input/SciNumberInput';
 
 type ValidateId =
    "vHigh" | "vLow" |  "nPulses" | "cycleTime" | "dutyCycle" | "nPointsHigh" | "nPointsLow"
@@ -238,6 +239,35 @@ export default function PulseControls() {
                         <div className="font-bold mt-2">
                             Low
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div className='py-4 w-full border-b border-solid border-neutral-600'>
+                <div className={'flex flex-col ' + (params.noise ? 'justify-between' : 'justify-around')}>
+                    
+                    { params.noise &&
+                    <div className='flex justify-between pb-2 px-1'>
+                        <div>
+                            Noise STD
+                        </div>
+                        <div className='ml-2 w-20 text-center my-auto'>
+                            <SciNumberInput
+                                label=''
+                                value={params.noiseStd}
+                                unit='V'
+                                onChange={(value) => {
+                                    dispatch(setPulseParamsField({val: value, key: 'noiseStd'}))
+                                }}
+                            ></SciNumberInput>
+                        </div>
+                    </div>
+                    }
+                    <div
+                        className={'p-2 py-1 ease-in-out cursor-pointer hover:bg-neutral-500 rounded-xl border border-solid border-neutral-600 flex justify-center' + (params.noise ? ' bg-red-500' : '')}
+                        onClick={() => dispatch(setPulseParamsField({val: !params.noise, key: 'noise'}))}
+                    >
+
+                            { params.noise ? 'Disable' : 'Enable Noise' }
                     </div>
                 </div>
             </div>

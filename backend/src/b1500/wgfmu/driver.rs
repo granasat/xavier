@@ -21,6 +21,7 @@ pub enum Status {
 
 #[derive(FromPrimitive, ToPrimitive, Debug, Serialize, Deserialize)]
 pub enum Error {
+    BadArguments, // This one is mine, does not correspond to any B1500 dll error.
     MutexUnlockError,
     NotImplemented,
 
@@ -85,13 +86,14 @@ pub struct Measurement {
 
 pub type Res = Result<(), Error>;
 
-pub trait WgfmuDriver<T> {
-    fn new() -> Result<T, Box<dyn std::error::Error>>;
+pub trait WgfmuDriver {
+    // fn new() -> Result<T, Box<dyn std::error::Error>>;
     fn open_session(&mut self, instrument: &str) -> Res;
     fn close_session(&mut self) -> Res;
     fn clear(&mut self) -> Res;
     fn create_pattern<'a>(&mut self, pattern: &'a str, init_v: f64) -> Res;
     fn add_vector<'a>(&mut self, pattern: &'a str, d_time: f64, voltage: f64) -> Res;
+    fn add_vectors<'a>(&mut self, pattern: &'a str, d_time: Vec<f64>, voltage: Vec<f64>) -> Res;
     fn set_measure_event(
         &mut self,
         pattern: &str,
@@ -103,6 +105,7 @@ pub trait WgfmuDriver<T> {
         measure_event_mode: MeasureEventMode,
     ) -> Res;
     fn add_sequence(&mut self, chan_id: usize, pattern: &str, count: usize) -> Res;
+    fn add_sequences(&mut self, chan_id: usize, pattern: Vec<&str>, count: Vec<usize>) -> Res;
     fn set_vector(&mut self, pattern: &str, time: f64, voltage: f64) -> Res;
     fn initialize(&mut self) -> Res;
     fn set_operation_mode(&mut self, chan_id: usize, operation_mode: OperationMode) -> Res;

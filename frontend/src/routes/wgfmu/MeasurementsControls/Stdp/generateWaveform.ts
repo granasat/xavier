@@ -1,5 +1,5 @@
-import { getValueFromUnit } from "../../../../utils/math"
-import { StdpControls, StdpWaveform, VoltageWaveform } from "../types"
+import { getValueFromUnit, randn } from "../../../../utils/math"
+import { StdpControls, StdpWaveform, VoltagePoint, VoltageWaveform } from "../types"
 
 export function getConstantVHigh(amplitude: number, pulseDuration: number, delay: number) {
     return (amplitude / 2) / (pulseDuration / 2) * delay
@@ -169,6 +169,47 @@ async function generateWaveform(params: StdpControls): Promise<StdpWaveform> {
     let waveformB = await parentWaveform(delay)
 
     waveformA.push({ time: waveformA[waveformA.length - 1].time + delay, voltage: 0 })
+
+    if (params.noise) {
+        // Sampling with linear interpolation
+        let nPoints = parseInt(params.nPoints)
+        let total_time = 2 * getValueFromUnit(params.waitTime) +  getValueFromUnit(params.delay) + getValueFromUnit(params.pulseDuration)
+        let sampling_interval = total_time / (nPoints - 1)
+        let timePoints =  [...Array(nPoints).keys()].map(p => p * sampling_interval)
+        
+        let finalWaveform: VoltageWaveform = [...Array(nPoints)].map(p => ({voltage: 0, time: 0} as VoltagePoint))
+        let curr_index = 0
+        timePoints.forEach( (time, idx) => {
+            // if (time == equivalentWaveForm[curr_index + 1].time) {
+            //     console.log('aaaa')
+            // }
+            if (time > equivalentWaveForm[curr_index + 1].time) {
+                curr_index += 1
+                // console.log('hey')
+            }
+    
+            // linear interpolation
+            let y0 = equivalentWaveForm[curr_index].voltage
+            let y1 = equivalentWaveForm[curr_index + 1].voltage
+            let x0 = equivalentWaveForm[curr_index].time
+            let x1 = equivalentWaveForm[curr_index + 1].time
+            let x = time 
+            let y = y0 + ( x - x0 ) * (y1 - y0) / (x1 - x0)
+
+            if ((y1 < y0 && y < y1) || (y1 > y0 && y > y1) ) {
+                y = y1
+            }
+            console.log(y1 -1)
+    
+            let voltage = y
+
+            finalWaveform[idx] = { voltage, time}
+        })
+        let randomArray = randn(getValueFromUnit(params.noiseStd), 0, nPoints)
+        finalWaveform = finalWaveform.map((p, idx) => ({...p, voltage: (p.voltage + randomArray[idx])}))
+        equivalentWaveForm = finalWaveform
+        // console.log(equivalentWaveForm)
+    }
 
     return {
         waveformA,

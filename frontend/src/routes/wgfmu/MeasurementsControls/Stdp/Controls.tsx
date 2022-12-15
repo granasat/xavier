@@ -11,6 +11,7 @@ import { ConductanceMeasurement } from '../../../../utils/types'
 import generateWaveform, { getMaxV, getMinV } from './generateWaveform'
 import AnimateHeight from './AnimateHeight'
 import MultiSlider from '../../../../components/MultiSlider'
+import SciNumberInput from '../../../../components/Input/SciNumberInput'
 
 type SingleValidations = {
     [key in `${keyof StdpControlsInterface}`]: boolean
@@ -88,7 +89,7 @@ export default function StdpControls() {
 
     function maxDelay(): number {
         try {
-            let unit = math.unit(getValue("pulseDuration"))
+            let unit = math.unit(getValue("pulseDuration") as string)
             //@ts-expect-error
             let v = Math.round(unit.value / 2 * 1 / unit.units[0].prefix.value * 100) / (100 * 1 / unit.units[0].prefix.value)
             return v
@@ -276,7 +277,7 @@ export default function StdpControls() {
                     onChange={(value) => {
                         dispatch(setStdpParamsField({ val: value, key: 'amplitude' }))
                     }}
-                    value={getValue("amplitude")}
+                    value={getValue("amplitude") as string}
                     onValidate={onValidateCurry("amplitude")}
                     type={{
                         type: "sci",
@@ -295,7 +296,7 @@ export default function StdpControls() {
                     onChange={(value) => {
                         dispatch(setStdpParamsField({ val: value, key: 'pulseDuration' }))
                     }}
-                    value={getValue("pulseDuration")}
+                    value={getValue("pulseDuration") as string}
                     onValidate={onValidateCurry("pulseDuration")}
                     type={{
                         type: "sci",
@@ -310,7 +311,7 @@ export default function StdpControls() {
                     onChange={(value) => {
                         dispatch(setStdpParamsField({ val: value, key: 'waitTime' }))
                     }}
-                    value={getValue("waitTime")}
+                    value={getValue("waitTime") as string}
                     onValidate={onValidateCurry("waitTime")}
                     type={{
                         type: "sci",
@@ -325,7 +326,7 @@ export default function StdpControls() {
                     onChange={(value) => {
                         dispatch(setStdpParamsField({ val: value, key: 'nPoints' }))
                     }}
-                    value={getValue("nPoints")}
+                    value={getValue("nPoints") as string}
                     onValidate={onValidateCurry("nPoints")}
                 />
             </div>
@@ -438,6 +439,36 @@ export default function StdpControls() {
                                 return ""
                             }
                         })()}
+                    </div>
+                </div>
+            </div>
+            
+            <div className='py-4 w-full border-b border-solid border-neutral-600'>
+                <div className={'flex flex-col ' + (params.noise ? 'justify-between' : 'justify-around')}>
+                    
+                    { params.noise &&
+                    <div className='flex justify-between pb-2 px-1'>
+                        <div>
+                            Noise STD
+                        </div>
+                        <div className='ml-2 w-20 text-center my-auto'>
+                            <SciNumberInput
+                                label=''
+                                value={params.noiseStd}
+                                unit='V'
+                                onChange={(value) => {
+                                    dispatch(setStdpParamsField({val: value, key: 'noiseStd'}))
+                                }}
+                            ></SciNumberInput>
+                        </div>
+                    </div>
+                    }
+                    <div
+                        className={'p-2 py-1 ease-in-out cursor-pointer hover:bg-neutral-500 rounded-xl border border-solid border-neutral-600 flex justify-center' + (params.noise ? ' bg-red-500' : '')}
+                        onClick={() => dispatch(setStdpParamsField({val: !params.noise, key: 'noise'}))}
+                    >
+
+                            { params.noise ? 'Disable' : 'Enable Noise' }
                     </div>
                 </div>
             </div>

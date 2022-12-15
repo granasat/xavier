@@ -32,6 +32,8 @@ pub struct StdpMeasurementParams {
     stdp_type: StdpType,
     n_points: usize,
     avg_time: f64,
+    noise: bool,
+    noise_std: f64
 }
 
 impl Responder for StdpMeasurementParams {
@@ -102,6 +104,8 @@ pub async fn stdp_measurement(
             params.n_points,
             params.avg_time,
             params.stdp_type,
+            params.noise,
+            params.noise_std
         );
 
         tx.send(result).unwrap();
@@ -164,6 +168,8 @@ pub struct StdpCollectionMeasurementParams {
     stdp_type: StdpType,
     n_points: usize,
     avg_time: f64,
+    noise: bool,
+    noise_std: f64
 }
 
 impl Responder for StdpCollectionMeasurementParams {
@@ -234,6 +240,8 @@ pub async fn stdp_collection_measurement(
             params.stdp_type,
             params.n_points,
             params.avg_time,
+            params.noise,
+            params.noise_std,
             StdpCollectionMeasMode::ForceConductanceMeasurement
         );
 

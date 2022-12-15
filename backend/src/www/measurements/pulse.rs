@@ -30,35 +30,9 @@ pub struct PulseMeasurementParams {
     duty_cycle: f64,
     n_points_high: usize,
     n_points_low: usize,
+    noise: bool,
+    noise_std: f64
 }
-
-// impl PulseMeasurementParams {
-//     fn to_value(&self) -> serde_json::Value {
-//         let mut map = serde_json::Map::new();
-//         map.insert(
-//             "avg_time".to_string(),
-//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-//         );
-//         map.insert(
-//             "v_high".to_string(),
-//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-//         );
-//         map.insert(
-//             "v_low".to_string(),
-//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-//         );
-//         map.insert(
-//             "cycle_time".to_string(),
-//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-//         );
-//         map.insert(
-//             "n_pulses".to_string(),
-//             Value::Number(serde_json::Number::from_f64(self.avg_time).unwrap()),
-//         );
-
-//         Value::Object(map)
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
@@ -134,6 +108,8 @@ pub async fn pulse_measurement(
             params.n_points_high,
             params.n_points_low,
             params.avg_time,
+            params.noise,
+            params.noise_std
         );
 
         tx.send(result).unwrap();

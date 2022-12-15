@@ -24,6 +24,8 @@ export interface PulseControls {
     cycleTime: string,
     nPointsHigh: string,
     nPointsLow: string,
+    noise: boolean,
+    noiseStd: string
 }
 
 export interface StdpControls {
@@ -32,7 +34,9 @@ export interface StdpControls {
     pulseDuration: string,
     waitTime: string,
     stdpType: "Depression" | "Potenciation",
-    nPoints: string
+    nPoints: string,
+    noise: boolean,
+    noiseStd: string
 }
 
 export interface StdpCollectionControls {
@@ -41,7 +45,9 @@ export interface StdpCollectionControls {
     pulseDuration: string,
     waitTime: string,
     stdpType: "Depression" | "Potenciation",
-    nPoints: string
+    nPoints: string,
+    noise: boolean,
+    noiseStd: string
 }
 
 export interface StdpWaveform {

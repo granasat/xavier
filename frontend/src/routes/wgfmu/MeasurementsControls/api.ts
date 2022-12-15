@@ -20,7 +20,9 @@ export async function pulseMeasurement(params: PulseControls, avgTime: string) {
         nPulses: parseInt(params.nPulses),
         nPointsHigh: parseInt(params.nPointsHigh),
         nPointsLow: parseInt(params.nPointsLow),
-        avgTime: math.unit(avgTime).value
+        avgTime: math.unit(avgTime).value,
+        noise: params.noise,
+        noiseStd: math.unit(params.noiseStd).value
     }
 
     const response = await fetch(PULSE_MEASUREMENT_ENDPOINT, {

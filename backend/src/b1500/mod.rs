@@ -1,6 +1,8 @@
 // pub mod measure;
 pub mod measure;
 pub mod wgfmu;
+pub mod utils;
+pub mod types;
 
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};

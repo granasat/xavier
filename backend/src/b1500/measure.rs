@@ -1,3 +1,5 @@
+use crate::b1500::types::VoltageWaveForm;
+
 use super::wgfmu::driver::{
     Error, MeasureEventMode, MeasureMode, Measurement, OperationMode, WgfmuDriver,
 };
@@ -7,6 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
+
+use rand_distr::{Normal, Distribution};
+
 
 const CHANNEL1: usize = 101;
 const CHANNEL2: usize = 102;
@@ -25,6 +30,8 @@ pub fn measure_pulse_fastiv(
     n_points_high: usize,
     n_points_low: usize,
     avg_time: f64,
+    noise: bool,
+    noise_std: f64
 ) -> Result<Vec<Measurement>, Error> {
     info!(
         "Measuring {} pulses at {}% DC and {}ns period",
@@ -36,9 +43,7 @@ pub fn measure_pulse_fastiv(
     let wgfmu = Arc::clone(&WGFMU);
     let mut wgfmu = wgfmu.lock()?;
 
-    println!("clear");
     wgfmu.clear()?;
-    println!("clearOk");
 
     let mut avg_time = avg_time;
 
@@ -60,8 +65,8 @@ pub fn measure_pulse_fastiv(
         f64::floor((measure_totaltime_high - avg_time) / time_sampling_resolution_high) as i32 - 1;
 
     // Sampling measurements Low
-    let totaltime_low = round_10ns(cycle_time * duty_cycle + 1e-8);
-    let measure_totaltime_low = round_10ns(totaltime_low - 2e-8);
+    let totaltime_low = round_10ns(cycle_time * (1.0 - duty_cycle));
+    let measure_totaltime_low = round_10ns(totaltime_low);
     let mut time_sampling_resolution_low =
         round_10ns(measure_totaltime_low / (n_points_low as f64));
 
@@ -73,49 +78,135 @@ pub fn measure_pulse_fastiv(
         avg_time = round_10ns(time_sampling_resolution_low);
     }
 
+    info!("p {}", f64::floor((measure_totaltime_low - avg_time) / time_sampling_resolution_low));
+
     let points_low =
         f64::floor((measure_totaltime_low - avg_time) / time_sampling_resolution_low) as i32 - 1;
 
     info!("Total points: {}", points_high + points_low);
-
+    
+    let normal_rng = Normal::new(0.0, noise_std).unwrap();
+    let mut rng = rand::thread_rng();
+    // Due to the 2048 maximum vectors limitation of the b1530A, when adding noise, we have to repeat the waveform,
+    // Page 1-14, Table 1-6 on https://twiki.cern.ch/twiki/pub/Main/AtlasEdinburghGroupHardwareUpgradeDocumentation/Agilent_B1530A_WGFMU_UserGuide.pdf
+    
+    let unique_pulses =  (2048 / (n_points_high as usize + n_points_low as usize)).min(n_pulses);
+    let n_rep = f64::ceil(n_pulses as f64 / unique_pulses as f64);
+    let unique_pulses = f64::ceil(n_pulses as f64 / n_rep) as usize;
+    let n_rep = ((n_pulses as f64)/(unique_pulses as f64)).ceil() as usize;
+    info!("Unique pulses: {}", unique_pulses);
+    
+    let mut f_time = 0.0;
     {
-        // CHANNEL2
-        // Initializing the "v1" pattern at 0, this is for SMU1
-        wgfmu.create_pattern("v1", 0.0)?;
+        if !noise {
+            // CHANNEL2
+            // Initializing the "v1" pattern at 0, this is for SMU1
+            wgfmu.create_pattern("v1", 0.0)?;
 
-        // Add the pulses to the waveform
-        wgfmu.add_vector("v1", 1e-8, v_high)?;
-        wgfmu.add_vector("v1", cycle_time * duty_cycle, v_high)?;
-        wgfmu.add_vector("v1", 1e-8, v_low)?;
-        wgfmu.add_vector("v1", cycle_time * (1.0 - duty_cycle), v_low)?;
+            // Add the pulses to the waveform
+            wgfmu.add_vector("v1", 1e-8, v_high)?;
+            wgfmu.add_vector("v1", cycle_time * duty_cycle, v_high)?;
+            wgfmu.add_vector("v1", 1e-8, v_low)?;
+            wgfmu.add_vector("v1", cycle_time * (1.0 - duty_cycle), v_low)?;
 
-        // Add the created waveform ONE time
-        wgfmu.add_sequence(CHANNEL2, "v1", n_pulses)?;
+            // Add the created waveform n_pulses times
+            wgfmu.add_sequence(CHANNEL2, "v1", n_pulses)?;
 
-        wgfmu.set_measure_event(
-            "v1",
-            "event_high",
-            time_sampling_resolution_high + 1e-8,
-            points_high,
-            time_sampling_resolution_high,
-            avg_time,
-            MeasureEventMode::MeasureEventDataAveraged,
-        )?;
+            wgfmu.set_measure_event(
+                "v1",
+                "event_high",
+                time_sampling_resolution_high + 1e-8,
+                points_high,
+                time_sampling_resolution_high,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
 
-        wgfmu.set_measure_event(
-            "v1",
-            "event_low",
-            round_10ns(time_sampling_resolution_low + totaltime_high),
-            points_low,
-            time_sampling_resolution_low,
-            avg_time,
-            MeasureEventMode::MeasureEventDataAveraged,
-        )?;
+            wgfmu.set_measure_event(
+                "v1",
+                "event_low",
+                round_10ns(time_sampling_resolution_low + totaltime_high),
+                points_low,
+                time_sampling_resolution_low,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
 
-        // Sampling margin
-        wgfmu.create_pattern("v1_margin", 0.0)?;
-        wgfmu.add_vector("v1_margin", cycle_time, 0.0)?;
-        wgfmu.add_sequence(CHANNEL2, "v1_margin", 1)?;
+            // Sampling margin
+            wgfmu.create_pattern("v1_margin", 0.0)?;
+            wgfmu.add_vector("v1_margin", cycle_time, 0.0)?;
+            wgfmu.add_sequence(CHANNEL2, "v1_margin", 1)?;
+        } else {
+            // CHANNEL2
+            // Initializing the "v1" pattern at 0, this is for SMU1
+
+            let cycle_points = (n_points_high + n_points_low) as usize;
+            // let total_points = cycle_points * n_pulses;
+            let mut d_time_vec: Vec<f64> = vec![0.0; cycle_points * unique_pulses];
+            let mut voltage_vec: Vec<f64> = vec![0.0; cycle_points * unique_pulses];
+
+            let pattern = "v1_1";
+            wgfmu.create_pattern(pattern, 0.0)?;
+
+            info!("Cycle points {}, unique pulses {}", cycle_points, unique_pulses);
+
+            for i in 0..unique_pulses {
+                
+                // High
+                for j in 0..(n_points_high as usize) {
+                    let index = j + i * cycle_points;
+                    d_time_vec[index] = time_sampling_resolution_high;
+                    f_time = f_time + time_sampling_resolution_high;
+                    voltage_vec[index] = v_high + normal_rng.sample(&mut rng);
+                }
+
+                // Low
+                for j in 0..(n_points_low as usize) {
+                    let index =  j + n_points_high as usize + i * cycle_points;
+                    d_time_vec[index] = time_sampling_resolution_low;
+                    f_time = f_time + time_sampling_resolution_low;
+                    voltage_vec[index] = v_low + normal_rng.sample(&mut rng);
+                }
+                
+            }
+
+            // info!("{:#?}", voltage_vec);
+
+            // Add the pulses to the waveform
+            wgfmu.add_vectors(pattern, d_time_vec.clone(), voltage_vec.clone())?;
+
+            // Add the created waveform n_pulses times
+            wgfmu.add_sequence(
+                CHANNEL2,
+                pattern,
+                n_rep
+            )?;
+
+            // let total_measure_time = time_sampling_resolution_high * (points_high-1) as f64 + avg_time  + time_sampling_resolution_low * (points_low-1) as f64 + avg_time;
+            let total_measure_time =  measure_totaltime_high + measure_totaltime_low;
+
+            // For some reason set_measure_event adds 1 to the vector (1.5 when event_low and event_high???????)
+            // so sampling interval has to be constant. I am sorry for this but I cannot find any other solution.
+            let total_points = (unique_pulses * (n_points_low as usize + n_points_high as usize)) as i32;
+            wgfmu.set_measure_event(
+                // format!("v1_{}", i).as_str(),
+                pattern,
+                "pulse_sample",
+                0.0,//  + time_sampling_resolution_high + 1e-8,
+                total_points,
+                (f_time - avg_time)/(total_points - 1) as f64,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
+            info!("f_time1: {}", f_time);
+            info!("P: {}", total_points);
+
+
+            // Sampling margin
+            // wgfmu.create_pattern("v1_margin", 0.0)?;
+            // wgfmu.add_vector("v1_margin", cycle_time, 0.0)?;
+            // wgfmu.add_sequence(CHANNEL2, "v1_margin", 1)?;
+        }
 
         info!(
             "New Cycle ({}, averaging: {}):\n
@@ -132,37 +223,66 @@ pub fn measure_pulse_fastiv(
             totaltime_low,
             (points_low as f64) * time_sampling_resolution_low
         );
+
     }
 
+    info!("tsrh: {}", time_sampling_resolution_high);
+    info!("tsrl: {}", time_sampling_resolution_low);
+
     {
-        let total_time = cycle_time + 2e-8;
+        if !noise {
+            let total_time = cycle_time + 2e-8;
 
-        // Initialize at 0
-        wgfmu.create_pattern("v2", 0.0)?;
-        // End at 0
-        wgfmu.set_vector("v2", total_time, 0.0)?;
+            // Initialize at 0
+            wgfmu.create_pattern("v2", 0.0)?;
+            // End at 0
+            wgfmu.set_vector("v2", total_time, 0.0)?;
 
-        wgfmu.add_sequence(CHANNEL1, "v2", n_pulses)?;
+            wgfmu.add_sequence(CHANNEL1, "v2", n_pulses)?;
 
-        wgfmu.set_measure_event(
-            "v2",
-            "event_high_current",
-            time_sampling_resolution_high + 1e-8,
-            points_high,
-            time_sampling_resolution_high,
-            avg_time,
-            MeasureEventMode::MeasureEventDataAveraged,
-        )?;
+            wgfmu.set_measure_event(
+                "v2",
+                "event_high_current",
+                time_sampling_resolution_high + 1e-8,
+                points_high,
+                time_sampling_resolution_high,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
 
-        wgfmu.set_measure_event(
-            "v2",
-            "event_low_current",
-            round_10ns(time_sampling_resolution_low + totaltime_high),
-            points_low,
-            time_sampling_resolution_low,
-            avg_time,
-            MeasureEventMode::MeasureEventDataAveraged,
-        )?;
+            wgfmu.set_measure_event(
+                "v2",
+                "event_low_current",
+                round_10ns(time_sampling_resolution_low + totaltime_high),
+                points_low,
+                time_sampling_resolution_low,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
+        } else {
+            let total_time = cycle_time + 2e-8;
+
+            // Initialize at 0
+            wgfmu.create_pattern("v2", 0.0)?;
+            // End at 0
+            wgfmu.set_vector("v2", total_time * (n_pulses as f64), 0.0)?;
+
+            wgfmu.add_sequence(CHANNEL1, "v2", 1)?;
+
+            let total_points = ( n_rep * (unique_pulses * (n_points_low as usize + n_points_high as usize))) as i32;
+            wgfmu.set_measure_event(
+                // format!("v1_{}", i).as_str(),
+                "v2",
+                "pulse_sample",
+                0.0,//  + time_sampling_resolution_high + 1e-8,
+                total_points,
+                (f_time - avg_time)/(total_points - 1) as f64,
+                avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
+            info!("P2: {}", total_points);
+
+        }
     }
 
     info!("Initializing WGFMU");
@@ -173,7 +293,7 @@ pub fn measure_pulse_fastiv(
 
     wgfmu.set_operation_mode(CHANNEL2, OperationMode::OperationModeFastIV)?;
     wgfmu.set_operation_mode(CHANNEL1, OperationMode::OperationModeFastIV)?;
-    wgfmu.set_measure_mode(CHANNEL2, MeasureMode::MeasureModeCurrent)?;
+    wgfmu.set_measure_mode(CHANNEL2, MeasureMode::MeasureModeVoltage)?;
     wgfmu.set_measure_mode(CHANNEL1, MeasureMode::MeasureModeCurrent)?;
     wgfmu.connect(CHANNEL2)?;
     wgfmu.connect(CHANNEL1)?;
@@ -215,6 +335,8 @@ pub fn measure_stdp_fastiv(
     n_points: usize,
     avg_time: f64,
     stdp_type: StdpType,
+    noise: bool,
+    noise_std: f64
 ) -> Result<StdpMeasurement, Error> {
     info!(
         "Measuring STDP at {} V Amplitude and {} ns delay",
@@ -253,6 +375,8 @@ pub fn measure_stdp_fastiv(
                     }
                     _ => {}
                 }
+
+                let waveform: VoltageWaveForm = vec![];
 
                 // CHANNEL2
                 // Initializing the "v1" pattern at 0, this is for SMU1
@@ -381,6 +505,7 @@ pub struct StdpCollectionMeasurement {
 }
 
 pub enum StdpCollectionMeasMode {
+    #[allow(dead_code)]
     /*
         Measurements will be sequential, with no repetitions
     */
@@ -403,7 +528,9 @@ pub fn measure_stdp_collection_fastiv(
     stdp_type: StdpType,
     n_points: usize,
     avg_time: f64,
-    meas_mode: StdpCollectionMeasMode,
+    noise: bool,
+    noise_std: f64,
+    meas_mode: StdpCollectionMeasMode
 ) -> Result<StdpCollectionMeasurement, Error> {
     info!(
         "Performing STDP Collection Measurement!\n\t{} delay points",
@@ -416,9 +543,13 @@ pub fn measure_stdp_collection_fastiv(
         wgfmu.open_session(instrument)?;
     }
 
-    let max_delay = pulse_duration / 2.0;
+    let max_delay = pulse_duration / 2.0 * 0.9;
 
     let base_conductance = measure_conductance_fastiv(None)?;
+
+    info!("-------------------------------");
+    info!("BaseConductance: {:.1$} uS", base_conductance * 1_000_000.0, 2);
+    info!("-------------------------------");
 
     let mut delay: f64;
     let mut collection = vec![];
@@ -437,6 +568,8 @@ pub fn measure_stdp_collection_fastiv(
                         n_points,
                         avg_time,
                         stdp_type,
+                        noise,
+                        noise_std
                     )?,
                     delay: match stdp_type {
                         StdpType::Depression => -delay,
@@ -453,25 +586,72 @@ pub fn measure_stdp_collection_fastiv(
             },
             StdpCollectionMeasMode::ForceConductanceMeasurement => {
 
-                let prev_conductance = if collection.len() == 0 { base_conductance } else { collection.last().unwrap().stdp_measurement.conductance };
-                let conductance_ok = |meas: StdpMeasurementWrapper| {
+                let prev_conductance = if collection.len() == 0 {
+                    base_conductance
+                } else {
+                    let conductance_getter = |m: &&StdpMeasurementWrapper| -> usize { (m.stdp_measurement.conductance * 1_000_000_000.0 ) as usize };
                     match stdp_type {
-                        StdpType::Depression => meas.stdp_measurement.conductance <= prev_conductance,
-                        StdpType::Potenciation => meas.stdp_measurement.conductance >= prev_conductance
+                        StdpType::Depression => collection.iter().min_by_key(conductance_getter).unwrap().stdp_measurement.conductance,
+                        StdpType::Potenciation => collection.iter().max_by_key(conductance_getter).unwrap().stdp_measurement.conductance
+                    }
+                    
+                };
+                let conductance_ok = |conductance: f64| {
+                    match stdp_type {
+                        StdpType::Depression => conductance <= prev_conductance,
+                        StdpType::Potenciation => conductance >= prev_conductance
                     }
                 };
+                
+                // The higher the better the measurement
+                // let goodness_test = |curr_best_conductance: f64, test_conductance: f64| {
+                //     let diff = test_conductance - curr_best_conductance;
+                //     match stdp_type {
+                //         StdpType::Depression => 
+                //             if diff <= 0.0 {
+                //                 f64::abs(diff)
+                //             } else {
+                //                 0.0
+                //             }
+                //         ,
+                //         StdpType::Potenciation => 
+                //             if diff >= 0.0 {
+                //                 f64::abs(diff)
+                //             } else {
+                //                 0.0
+                //             }
+                        
+                //     }
+                // };
+
+                info!("-------------------------------");
+                info!("Conductance: {:.1$} uS", meas.stdp_measurement.conductance * 1_000_000.0, 2);
+                info!("-------------------------------");
+
+                // let mut best_meas = meas.clone();
 
                 let mut ntries = 0;
                 
-                while ntries < MAX_FORCE_CONDUCTANCE_TRIES && !conductance_ok(meas.clone()) {
+                collection.push(meas.clone());
+    
+                while ntries < MAX_FORCE_CONDUCTANCE_TRIES && !conductance_ok(meas.stdp_measurement.conductance) {
                     meas = get_meas()?;
+                    // if goodness_test(best_meas.stdp_measurement.conductance, meas.stdp_measurement.conductance) > 0.0 {
+                    //     best_meas = meas.clone();
+                    // }
+                    collection.push(meas.clone());
+
+                    info!("-------------------------------");
+                    info!("Conductance: {} uS , vs {} uS",
+                        format!("{:.1$}", meas.stdp_measurement.conductance * 1_000_000.0, 2),
+                        format!("{:.1$}", prev_conductance * 1_000_000.0, 2));
+                    info!("-------------------------------");
+
                     ntries += 1;
                 }
 
-                collection.push(meas);
             }
         }
-        
     }
 
     {
@@ -582,7 +762,6 @@ pub fn measure_conductance_fastiv(instrument: Option<&str>) -> Result<f64, Error
         Some(current) => {
             writeln!(f, "{},{},{}", val.voltage, current, val.time).unwrap();
             if val.voltage != 0.0 {
-                info!("current: {}, voltage: {}", current, val.voltage);
                 acc + (f64::abs(current) / f64::abs(val.voltage))
             } else {
                 n_v_0 += 1;

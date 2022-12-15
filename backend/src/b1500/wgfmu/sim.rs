@@ -34,14 +34,7 @@ fn get_result(ret: i32) -> Res {
 type Res = Result<(), Error>;
 
 #[allow(unused_unsafe, dead_code, unused)]
-impl WgfmuDriver<TestWgfmu> for TestWgfmu {
-    #[rustfmt::skip]
-    fn new() -> Result<TestWgfmu, Box<dyn std::error::Error>> {
-        Ok(TestWgfmu {
-            vectors: HashMap::new()
-        })
-    }
-
+impl WgfmuDriver for TestWgfmu {
     fn open_session(&mut self, instrument: &str) -> Res {
         let ret = 0;
         get_result(ret)
@@ -90,6 +83,21 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
             None => get_result(0),
         }
     }
+    
+    fn add_vectors(&mut self, pattern: &str, d_time: Vec<f64>, voltage: Vec<f64>) -> Res {
+
+        let mut d_time = d_time;
+
+        if d_time.len() != voltage.len() {
+            return Result::Err(Error::BadArguments);
+        }
+
+        for i in 0..d_time.len() {
+            self.add_vector(pattern, d_time[i], voltage[i])?;
+        }
+
+        Ok(())
+    }
 
     fn set_measure_event(
         &mut self,
@@ -128,6 +136,21 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
             },
             None => {}
         };
+
+        get_result(ret)
+    }
+
+    fn add_sequences(&mut self, chan_id: usize, pattern: Vec<&str>, count: Vec<usize>) -> Res {
+        let ret = 0;
+        let len = pattern.len();
+        
+        if pattern.len() != count.len() {
+            return Result::Err(Error::BadArguments);
+        }
+
+        for i in 0..len {
+            self.add_sequence(chan_id, pattern[i], count[i]);
+        }
 
         get_result(ret)
     }
@@ -218,3 +241,35 @@ impl WgfmuDriver<TestWgfmu> for TestWgfmu {
         Ok(())
     }
 }
+
+impl TestWgfmu {
+    #[rustfmt::skip]
+    pub fn new() -> Result<TestWgfmu, Box<dyn std::error::Error>> {
+        Ok(TestWgfmu {
+            vectors: HashMap::new()
+        })
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -49,7 +49,9 @@ const initialState: WaveformState = {
       cycleTime: "10 us",
       dutyCycle: "50",
       nPointsHigh: "10",
-      nPointsLow: "10"
+      nPointsLow: "10",
+      noise: false,
+      noiseStd: "0 mV"
     },
     type: "Single"
   },
@@ -62,6 +64,8 @@ const initialState: WaveformState = {
       waitTime: "1 us",
       stdpType: "Depression",
       nPoints: "400",
+      noise: false,
+      noiseStd: "0 mV"
     },
     collectionParams: {
       delayPoints: "5",
@@ -70,6 +74,8 @@ const initialState: WaveformState = {
       stdpType: "Depression",
       waitTime: "1 us",
       nPoints: "400",
+      noise: false,
+      noiseStd: "0 mV"
     },
     measuredConductance: null,
     type: "Single"
@@ -98,7 +104,7 @@ export const waveformSlice = createSlice({
     setPoints: (state, action: PayloadAction<VoltageWaveform | StdpWaveform>) => {
       state.waveform.points = action.payload;
     },
-    setPulseParamsField: (state, action: PayloadAction<{ val: string, key: keyof PulseControls }>) => {
+    setPulseParamsField: (state, action: PayloadAction<{ val: string | boolean, key: keyof PulseControls }>) => {
 
       if (action.payload.key == 'nPointsHigh' || action.payload.key == 'nPointsLow') {
         let totalPoints = parseInt(action.payload.val as string);
@@ -130,7 +136,11 @@ export const waveformSlice = createSlice({
       }
     },
 
-    setStdpParamsField: (state, action: PayloadAction<{ val: string, key: keyof StdpControls | keyof StdpCollectionControls }>) => {
+    setStdpParamsField: (
+      state,
+      action: PayloadAction<
+      { val: StdpControls[keyof StdpControls] | StdpCollectionControls[keyof StdpCollectionControls],
+        key: keyof StdpControls | keyof StdpCollectionControls }>) => {
       switch (state.stdp.type) {
         case "Single":
           state.stdp.params = {

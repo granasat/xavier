@@ -83,7 +83,7 @@ export default function SciNumberInput(props: Props) {
             <input
                 type={"text"}
                 // className={" outline-none focus:outline-none text-center bg-neutral-600 font-semibold text-md hover:text-white focus:text-white md:text-basecursor-default text-neutral-400 outline-none " + (isValid ? '' : 'text-red-400 font-extrabold')}
-                className={"text-center w-full px-1 rounded-md outline-none focus:outline-non bg-neutral-600 font-semibold text-md hover:text-white focus:text-white md:text-basecursor-default text-neutral-400 outline-none " + (isValid ? '' : 'text-red-900 bg-red-400 font-extrabold')}
+                className={"text-center w-full px-1 rounded-md bg-neutral-600 font-semibold text-md hover:text-white focus:text-white md:text-basecursor-default text-neutral-400 outline-none " + (isValid ? '' : 'text-red-900 bg-red-400 font-extrabold')}
                 name=""
                 value={props.value}
                 onKeyDown={(e) => {onKeyDown(e)}}
