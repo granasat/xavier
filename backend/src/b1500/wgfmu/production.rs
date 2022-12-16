@@ -333,16 +333,6 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
     fn execute(&mut self) -> Res {
         let ret;
         unsafe {
-            let pattern = CString::new("v1_1").unwrap();
-            let pattern = pattern.as_ptr();
-            
-            let mut r_len = 0;
-            let r_len = &mut r_len as *mut c_int;
-            
-            (self.get_pattern_force_value_size)(pattern, r_len);
-            
-            info!("REAL LEN2 {}", *r_len);
-
             ret = (self.execute)();
         }
         get_result(ret)

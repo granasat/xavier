@@ -50,7 +50,9 @@ export async function stdpMeasurement(params: StdpControls, avgTime: string) {
         pulseDuration: math.unit(params.pulseDuration).value,
         nPoints: parseInt(params.nPoints),
         stdpType: params.stdpType,
-        avgTime: math.unit(avgTime).value
+        avgTime: math.unit(avgTime).value,
+        noise: params.noise,
+        noiseStd: math.unit(params.noiseStd).value
     }
 
     const response = await fetch(STDP_MEASUREMENT_ENDPOINT, {
@@ -78,7 +80,9 @@ export async function stdpCollectionMeasurement(params: StdpCollectionControls, 
         pulseDuration: math.unit(params.pulseDuration).value,
         stdpType: params.stdpType,
         nPoints: parseInt(params.nPoints),
-        avgTime: math.unit(avgTime).value
+        avgTime: math.unit(avgTime).value,
+        noise: params.noise,
+        noiseStd: math.unit(params.noiseStd).value
     }
 
     const response = await fetch(STDP_COLLECTION_MEASUREMENT_ENDPOINT, {

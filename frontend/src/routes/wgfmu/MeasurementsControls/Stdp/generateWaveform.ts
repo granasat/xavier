@@ -183,7 +183,7 @@ async function generateWaveform(params: StdpControls): Promise<StdpWaveform> {
             // if (time == equivalentWaveForm[curr_index + 1].time) {
             //     console.log('aaaa')
             // }
-            if (time > equivalentWaveForm[curr_index + 1].time) {
+            while (time > equivalentWaveForm[curr_index + 1].time) {
                 curr_index += 1
                 // console.log('hey')
             }
@@ -195,11 +195,6 @@ async function generateWaveform(params: StdpControls): Promise<StdpWaveform> {
             let x1 = equivalentWaveForm[curr_index + 1].time
             let x = time 
             let y = y0 + ( x - x0 ) * (y1 - y0) / (x1 - x0)
-
-            if ((y1 < y0 && y < y1) || (y1 > y0 && y > y1) ) {
-                y = y1
-            }
-            console.log(y1 -1)
     
             let voltage = y
 

@@ -1,15 +1,28 @@
+use std::sync::MutexGuard;
+
+use log::info;
+use rand_distr::{Normal, NormalError, Distribution};
+use sea_orm::strum::Display;
+
 use super::wgfmu::{self, WgfmuDriver};
-use super::types::{VoltageWaveForm, VoltageWaveFormPoint};
+use super::types::{VoltageWaveForm, VoltageWaveFormPoint, Noise};
 
-
-enum Error {
+#[derive(Debug, Display)]
+pub enum Error {
     BadArguments(String),
-    WgfmuError(wgfmu::Error)
+    WgfmuError(wgfmu::Error),
+    RandomDistributionError(NormalError)
 }
 
 impl From<wgfmu::Error> for Error {
     fn from(error: wgfmu::Error) -> Self {
         Error::WgfmuError(error)
+    }
+}
+
+impl From<NormalError> for Error {
+    fn from(error: NormalError) -> Self {
+        Error::RandomDistributionError(error)
     }
 }
 
@@ -38,10 +51,16 @@ impl From<wgfmu::Error> for Error {
 ///   [V]        .     .     .     .
 ///    |   *.*.*.*     *.*.*.*     *.*.*.*
 /// // In this case, `n_points` is 20.
-fn add_noisy_waveform<D: WgfmuDriver>(wgfmu: &mut D, waveform: VoltageWaveForm, n_points: usize, pattern: &str) -> Result<(), Error> {
+pub fn add_noisy_waveform<D: WgfmuDriver>(wgfmu: &mut MutexGuard<D>, waveform: &VoltageWaveForm, n_points: usize, pattern: &str, noise: Noise) -> Result<(), Error> {
     if waveform.len() < 2 { // 2 is the minimum we will accept
         return Result::Err(Error::BadArguments("`waveform` param needs to have at least 2 elements".to_owned()));
     }
+
+    let mut rng = rand::thread_rng();
+    let distribution = match noise {
+        Noise::Gaussian(params) => Normal::new(params.mean, params.sigma)?,
+        // _ => Normal::new(0.0, 1.0)
+    };
 
     let initial_t = waveform.get(0).ok_or(Error::BadArguments("Error getting index 0 of `waveform`".to_owned()))?.dtime;
     let total_time = waveform.iter().fold(0.0, |sum, val| sum + val.dtime ) - initial_t;
@@ -56,7 +75,7 @@ fn add_noisy_waveform<D: WgfmuDriver>(wgfmu: &mut D, waveform: VoltageWaveForm, 
     let mut current_index = 0; // Index of the of the first of the two points we are looking at in the provided waveform
     let mut current_time = 0.0; // Absolute time of the first of the two points we are looking at in the provided waveform
     for (idx, &time) in final_time_points[..n_points -1].iter().enumerate() {
-        if time > current_time + waveform[current_index + 1].dtime {
+        while time > current_time + waveform[current_index + 1].dtime {
             current_time += waveform[current_index + 1].dtime;
             current_index += 1;
         }
@@ -69,9 +88,14 @@ fn add_noisy_waveform<D: WgfmuDriver>(wgfmu: &mut D, waveform: VoltageWaveForm, 
         let x = time;
         let y = y_0 + (x - x_0)*(y_1 - y_0)/(x_1 - x_0);
 
-        final_waveform[idx].voltage = y;
+        final_waveform[idx].voltage = y + distribution.sample(&mut rng);
         final_waveform[idx].dtime = sampling_time;
     }
+
+    let min = final_waveform.iter().fold(final_waveform.get(0).unwrap().voltage, |min, &el| min.min(el.voltage));
+    let max = final_waveform.iter().fold(final_waveform.get(0).unwrap().voltage, |max, &el| max.max(el.voltage));
+    let max_diff= max-min;
+    info!("Diff: {} V", max_diff);
 
     for voltage_point in final_waveform {
         wgfmu.add_vector(pattern, sampling_time, voltage_point.voltage)?;
@@ -80,7 +104,7 @@ fn add_noisy_waveform<D: WgfmuDriver>(wgfmu: &mut D, waveform: VoltageWaveForm, 
     Ok(())
 }
 
-fn add_waveform<D: WgfmuDriver>(wgfmu: &mut D, waveform: VoltageWaveForm, pattern: &str) -> Result<(), Error> {
+pub fn add_waveform<D: WgfmuDriver>(wgfmu: &mut MutexGuard<D>, waveform: &VoltageWaveForm, pattern: &str) -> Result<(), Error> {
     for voltage_point in waveform {
         wgfmu.add_vector(pattern, voltage_point.dtime, voltage_point.voltage)?;
     }

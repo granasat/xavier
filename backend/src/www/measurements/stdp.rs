@@ -4,10 +4,10 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
 use crate::b1500::measure::{
+    self,
     measure_conductance_fastiv, measure_stdp_collection_fastiv, measure_stdp_fastiv,
     StdpCollectionMeasurement, StdpMeasurement, StdpType, StdpCollectionMeasMode,
 };
-use crate::b1500::wgfmu;
 use crate::AppState;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
@@ -90,8 +90,8 @@ pub async fn stdp_measurement(
     let id = measurement.unwrap().id as usize;
 
     let (tx, rx): (
-        Sender<Result<StdpMeasurement, wgfmu::Error>>,
-        Receiver<Result<StdpMeasurement, wgfmu::Error>>,
+        Sender<Result<StdpMeasurement, measure::Error>>,
+        Receiver<Result<StdpMeasurement, measure::Error>>,
     ) = mpsc::channel();
 
     thread::spawn(move || {
@@ -226,8 +226,8 @@ pub async fn stdp_collection_measurement(
     let id = measurement.unwrap().id as usize;
 
     let (tx, rx): (
-        Sender<Result<StdpCollectionMeasurement, wgfmu::Error>>,
-        Receiver<Result<StdpCollectionMeasurement, wgfmu::Error>>,
+        Sender<Result<StdpCollectionMeasurement, measure::Error>>,
+        Receiver<Result<StdpCollectionMeasurement, measure::Error>>,
     ) = mpsc::channel();
 
     thread::spawn(move || {

@@ -100,11 +100,18 @@ export default function StdpControls() {
 
     function collectionDelayPoints(): number[] {
         let maxDelayLocal = maxDelay()
-        let delayPoints = parseInt(collectionParams.delayPoints)
+        let delayPoints = parseInt(collectionParams.delayPoints) + 2
 
-        return (new Array(parseInt(collectionParams.delayPoints)))
+        let points = (new Array(delayPoints))
             .fill(0)
-            .map((_, i) => maxDelayLocal / delayPoints * (i + 1))
+            .map((_, idx) => maxDelayLocal / (delayPoints - 1) * idx)
+        // Remove first element
+        points.shift()
+        // Remove last element
+        points.pop()
+
+
+        return points
     }
 
     useEffect(() => {
@@ -446,7 +453,7 @@ export default function StdpControls() {
             <div className='py-4 w-full border-b border-solid border-neutral-600'>
                 <div className={'flex flex-col ' + (params.noise ? 'justify-between' : 'justify-around')}>
                     
-                    { params.noise &&
+                    { getValue("noise") as boolean &&
                     <div className='flex justify-between pb-2 px-1'>
                         <div>
                             Noise STD
@@ -454,7 +461,7 @@ export default function StdpControls() {
                         <div className='ml-2 w-20 text-center my-auto'>
                             <SciNumberInput
                                 label=''
-                                value={params.noiseStd}
+                                value={getValue("noiseStd") as string}
                                 unit='V'
                                 onChange={(value) => {
                                     dispatch(setStdpParamsField({val: value, key: 'noiseStd'}))
@@ -464,11 +471,11 @@ export default function StdpControls() {
                     </div>
                     }
                     <div
-                        className={'p-2 py-1 ease-in-out cursor-pointer hover:bg-neutral-500 rounded-xl border border-solid border-neutral-600 flex justify-center' + (params.noise ? ' bg-red-500' : '')}
-                        onClick={() => dispatch(setStdpParamsField({val: !params.noise, key: 'noise'}))}
+                        className={'p-2 py-1 ease-in-out cursor-pointer hover:bg-neutral-500 rounded-xl border border-solid border-neutral-600 flex justify-center' + ((getValue("noise") as boolean) ? ' bg-red-500' : '')}
+                        onClick={() => dispatch(setStdpParamsField({val: !(getValue("noise") as boolean), key: 'noise'}))}
                     >
 
-                            { params.noise ? 'Disable' : 'Enable Noise' }
+                            { (getValue("noise") as boolean) ? 'Disable' : 'Enable Noise' }
                     </div>
                 </div>
             </div>

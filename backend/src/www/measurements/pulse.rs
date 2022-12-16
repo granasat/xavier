@@ -4,7 +4,9 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
 use crate::b1500::measure::measure_pulse_fastiv;
-use crate::b1500::wgfmu::{self, driver::Measurement};
+use crate::b1500::{
+    measure,
+    wgfmu::driver::Measurement};
 use crate::AppState;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
@@ -93,8 +95,8 @@ pub async fn pulse_measurement(
     let id = measurement.unwrap().id as usize;
 
     let (tx, rx): (
-        Sender<Result<Vec<Measurement>, wgfmu::Error>>,
-        Receiver<Result<Vec<Measurement>, wgfmu::Error>>,
+        Sender<Result<Vec<Measurement>, measure::Error>>,
+        Receiver<Result<Vec<Measurement>, measure::Error>>,
     ) = mpsc::channel();
 
     thread::spawn(move || {
