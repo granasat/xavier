@@ -5,8 +5,11 @@ use std::thread;
 
 use crate::b1500::measure::{
     self,
-    measure_conductance_fastiv, measure_stdp_collection_fastiv, measure_stdp_fastiv,
-    StdpCollectionMeasurement, StdpMeasurement, StdpType, StdpCollectionMeasMode,
+    stdp::{
+        measure_stdp_collection_fastiv, measure_stdp_fastiv, StdpCollectionMeasMode,
+        StdpCollectionMeasurement, StdpMeasurement, StdpType,
+    },
+    utils::measure_conductance_fastiv,
 };
 use crate::AppState;
 use actix_web::body::BoxBody;
@@ -33,7 +36,7 @@ pub struct StdpMeasurementParams {
     n_points: usize,
     avg_time: f64,
     noise: bool,
-    noise_std: f64
+    noise_std: f64,
 }
 
 impl Responder for StdpMeasurementParams {
@@ -105,7 +108,7 @@ pub async fn stdp_measurement(
             params.avg_time,
             params.stdp_type,
             params.noise,
-            params.noise_std
+            params.noise_std,
         );
 
         tx.send(result).unwrap();
@@ -169,7 +172,7 @@ pub struct StdpCollectionMeasurementParams {
     n_points: usize,
     avg_time: f64,
     noise: bool,
-    noise_std: f64
+    noise_std: f64,
 }
 
 impl Responder for StdpCollectionMeasurementParams {
@@ -242,7 +245,7 @@ pub async fn stdp_collection_measurement(
             params.avg_time,
             params.noise,
             params.noise_std,
-            StdpCollectionMeasMode::ForceConductanceMeasurement
+            StdpCollectionMeasMode::ForceConductanceMeasurement,
         );
 
         tx.send(result).unwrap();

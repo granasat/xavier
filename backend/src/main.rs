@@ -56,7 +56,7 @@ async fn web_server(cfg: Config) -> std::io::Result<()> {
                     })),
             )
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(("0.0.0.0", 8000))?
     .run()
     .await
 }
@@ -66,8 +66,9 @@ fn main() {
 
     std::env::set_var("RUST_LOG", "actix_web=debug");
     std::env::set_var("RUST_LOG", "debug");
+    std::env::remove_var("WAYLAND_DISPLAY"); // Temporal fix
 
-    std::thread::spawn({
+    let join_handle = std::thread::spawn({
         let cfg = cfg.clone();
         move || {
             web_server(cfg).unwrap();
@@ -75,4 +76,5 @@ fn main() {
     });
 
     gui::gui(cfg.clone());
+    join_handle.join().unwrap(); // If the user quits the GUI launch a new one.
 }

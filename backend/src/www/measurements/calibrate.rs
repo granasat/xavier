@@ -1,4 +1,4 @@
-use crate::b1500::measure;
+use crate::b1500;
 use crate::AppState;
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpResponse, Responder};
@@ -21,7 +21,7 @@ pub async fn calibrate(app: web::Data<AppState>) -> impl Responder {
 
     info!("Calibrating!");
 
-    let result = match web::block(move || measure::calibrate(Some("b1500gpib"))).await {
+    let result = match web::block(move || b1500::utils::calibrate(Some("b1500gpib"))).await {
         Ok(res) => res,
         Err(err) => {
             return HttpResponse::InternalServerError()

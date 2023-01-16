@@ -12,12 +12,14 @@ use super::driver::*;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TestWgfmu {
-    vectors: HashMap<String, Vector>
+    vectors: HashMap<String, Vector>,
+    last_t: f64,
+    measured_waveform: Vec<Measurement>
 }
 
 #[derive(Clone, Debug)]
 struct Vector {
-    vector: Vec<Measurement>,
+    measurements: Vec<Measurement>,
     last_t: f64,
 }
 
@@ -54,7 +56,7 @@ impl WgfmuDriver for TestWgfmu {
         self.vectors.insert(
             pattern.to_string(),
             Vector {
-                vector: Vec::new(),
+                measurements: Vec::new(),
                 last_t: 0.0,
             },
         );
@@ -73,7 +75,7 @@ impl WgfmuDriver for TestWgfmu {
         match self.vectors.get_mut(pattern) {
             Some(vector) => {
                 vector.last_t = vector.last_t + d_time;
-                vector.vector.push(Measurement {
+                vector.measurements.push(Measurement {
                     voltage,
                     current: Some(voltage/2.0),
                     time: vector.last_t,
@@ -121,18 +123,28 @@ impl WgfmuDriver for TestWgfmu {
                 let mut vector_copy = vector.to_owned();
                 let cycle_time = vector.last_t;
                 for i in 0..count-1 {
-                    vector.vector.append(
-                        &mut vector_copy.vector.iter().map(|meas| {
+                    // vector.measurements.append(
+                    //     &mut vector_copy.measurements.iter().map(|meas| {
+                    //         Measurement {
+                    //             voltage: meas.voltage,
+                    //             current: meas.current,
+                    //             time: meas.time + vector.last_t
+                    //         }
+                    //     }).collect::<Vec<Measurement>>()
+                    // );
+                    // vector.last_t = vector.last_t + cycle_time;
+
+                    self.measured_waveform.append(
+                        &mut vector_copy.measurements.iter().map(|meas| {
                             Measurement {
                                 voltage: meas.voltage,
                                 current: meas.current,
-                                time: meas.time + vector.last_t
+                                time: meas.time + cycle_time * (i as f64) + self.last_t
                             }
                         }).collect::<Vec<Measurement>>()
                     );
-                    // vector.vector.append(&mut );
-                    vector.last_t = vector.last_t + cycle_time;
                 }
+                self.last_t = self.last_t + cycle_time * (count as f64 - 1.0);
             },
             None => {}
         };
@@ -214,27 +226,9 @@ impl WgfmuDriver for TestWgfmu {
     }
 
     fn get_measure_values(&mut self, chan_id: usize) -> Result<Vec<Measurement>, Error> {
-        let mut values = self.vectors.values();
-        let mut vector = values.next().unwrap();
-        
         std::thread::sleep(std::time::Duration::from_millis(4000));
 
-        while vector.vector.len() <= 1 {
-            match values.next() {
-                Some(next_v) => {
-                    vector = next_v;
-                },
-                None => {
-                    break;
-                }
-            }
-        }
-
-        if vector.vector.len() > 0 {
-            return Ok(vector.vector.to_owned())
-        }
-
-        Result::Err(Error::UnidentifiedError)
+        Ok(self.measured_waveform.to_owned())
     }
 
     fn do_self_calibration(&mut self) -> Res {
@@ -246,7 +240,9 @@ impl TestWgfmu {
     #[rustfmt::skip]
     pub fn new() -> Result<TestWgfmu, Box<dyn std::error::Error>> {
         Ok(TestWgfmu {
-            vectors: HashMap::new()
+            vectors: HashMap::new(),
+            last_t: 0.0,
+            measured_waveform: vec![]
         })
     }
 }

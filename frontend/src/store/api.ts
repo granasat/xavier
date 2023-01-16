@@ -1,6 +1,6 @@
 
 const MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/"
-const CALIBRATE_ENDPOINT = "http://localhost:8000/api/measurements/calibrate"
+const CALIBRATE_ENDPOINT = "http://localhost:8000/api/calibrate"
 
 export async function fetchMeasurements() {
     const response = await fetch(MEASUREMENT_ENDPOINT, {

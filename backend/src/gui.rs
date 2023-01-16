@@ -1,7 +1,6 @@
 use env_logger;
 use std::{
     sync::{Arc, Mutex},
-    thread,
 };
 
 use log::{debug, LevelFilter};
@@ -10,8 +9,6 @@ use std::io::Write;
 use eframe::egui;
 
 use crate::config::Config;
-
-fn log() {}
 
 fn load_icon(path: &str) -> eframe::IconData {
     debug!("Loading icon...");
@@ -48,10 +45,6 @@ pub fn gui(cfg: Config) {
             options,
             Box::new(|cc| {
                 let xavier = Xavier::new(cc, lg, cfg);
-
-                thread::spawn(move || {
-                    log();
-                });
 
                 Box::new(xavier)
             }),
@@ -151,7 +144,6 @@ impl eframe::App for Xavier {
     fn update(&mut self, ctx: &eframe::egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             // ui.hyperlink_to("Xavier", "http://localhost:8000/wgfmu");
-
             ui.heading("Log");
             ui.separator();
             use egui_extras::{Size, StripBuilder};
@@ -175,5 +167,8 @@ impl eframe::App for Xavier {
                     });
                 });
         });
+    }
+    fn on_close_event(&mut self) -> bool {
+        true
     }
 }

@@ -1,8 +1,11 @@
 // pub mod measure;
 pub mod measure;
-pub mod wgfmu;
-pub mod utils;
 pub mod types;
+pub mod utils;
+pub mod wgfmu;
+
+pub const CHANNEL1: usize = 101;
+pub const CHANNEL2: usize = 102;
 
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};

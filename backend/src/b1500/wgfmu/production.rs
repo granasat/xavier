@@ -117,7 +117,6 @@ fn get_result(ret: i32) -> Res {
 
 #[allow(unused_unsafe, dead_code)]
 impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
-
     fn open_session(&mut self, instrument: &str) -> Res {
         let ret;
         unsafe {
@@ -184,7 +183,6 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
     }
 
     fn add_vectors(&mut self, pattern: &str, d_time: Vec<f64>, voltage: Vec<f64>) -> Res {
-
         if d_time.len() != voltage.len() {
             return Result::Err(Error::BadArguments);
         }
@@ -194,15 +192,19 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
             let pattern = CString::new(pattern).unwrap();
             let pattern = pattern.as_ptr();
             info!("LEN {}", d_time.len());
-            ret = (self.add_vectors)(pattern, d_time.as_ptr(), voltage.as_ptr(), d_time.len() as c_int);
-            
+            ret = (self.add_vectors)(
+                pattern,
+                d_time.as_ptr(),
+                voltage.as_ptr(),
+                d_time.len() as c_int,
+            );
+
             let mut r_len = 0;
             let r_len = &mut r_len as *mut c_int;
-            
-            (self.get_pattern_force_value_size)(pattern, r_len);
-            
-            info!("REAL LEN {}", *r_len);
 
+            (self.get_pattern_force_value_size)(pattern, r_len);
+
+            info!("REAL LEN {}", *r_len);
         }
         get_result(ret)
     }
@@ -244,15 +246,20 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
     fn add_sequences(&mut self, chan_id: usize, pattern: Vec<&str>, count: Vec<usize>) -> Res {
         let ret;
         unsafe {
-
-            let pattern_c: Vec<CString> = pattern.iter().map(|&s| CString::new(s).unwrap()).collect();
+            let pattern_c: Vec<CString> =
+                pattern.iter().map(|&s| CString::new(s).unwrap()).collect();
             let mut count_c: Vec<f64> = count.iter().map(|&c| c as f64).collect();
 
             ret = (self.add_sequences)(
                 chan_id as i32,
-                pattern_c.iter().map(|cstr| cstr.as_ptr()).collect::<Vec<*const i8>>().as_ptr(),
+                pattern_c
+                    .iter()
+                    .map(|cstr| cstr.as_ptr())
+                    .collect::<Vec<*const i8>>()
+                    .as_ptr(),
                 count_c.as_mut_ptr(),
-                pattern.len() as c_int);
+                pattern.len() as c_int,
+            );
         }
         get_result(ret)
     }
@@ -375,7 +382,8 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
                         let ret = (self.get_measure_value)(101 as i32, i as c_int, time, current);
                         get_result(ret)?;
 
-                        let ret = (self.get_measure_value)(chan_id as i32, i as c_int, time, voltage);
+                        let ret =
+                            (self.get_measure_value)(chan_id as i32, i as c_int, time, voltage);
 
                         get_result(ret)?;
 
@@ -398,7 +406,7 @@ impl<'a> WgfmuDriver for ProductionWgfmu<'a> {
             let mut result = 0;
             let result = &mut result as *mut c_int;
 
-            let string: &str = "Hello, world!";
+            let string: &str = "                                              ";
             let bytes: Vec<u8> = String::from(string).into_bytes();
             let mut c_chars: Vec<i8> = bytes.iter().map(|c| *c as i8).collect::<Vec<i8>>();
 
