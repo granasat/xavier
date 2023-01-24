@@ -1,12 +1,13 @@
 import { PulseControls, StdpCollectionControls, StdpControls } from './types'
 import math from '../../../utils/math'
 import { ConductanceMeasurement } from '../../../utils/types'
+import { buildUrl } from '../../../utils'
 
-const MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/"
-const PULSE_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/pulse"
-const STDP_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/stdp"
-const STDP_COLLECTION_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/stdp-collection"
-const CONDUCTANCE_MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/conductance"
+const MEASUREMENT_ENDPOINT = buildUrl("measurements/")
+const PULSE_MEASUREMENT_ENDPOINT = buildUrl("measurements/pulse")
+const STDP_MEASUREMENT_ENDPOINT = buildUrl("measurements/stdp")
+const STDP_COLLECTION_MEASUREMENT_ENDPOINT = buildUrl("measurements/stdp-collection")
+const CONDUCTANCE_MEASUREMENT_ENDPOINT = buildUrl("measurements/conductance")
 
 
 export async function pulseMeasurement(params: PulseControls, avgTime: string) {

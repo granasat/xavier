@@ -109,6 +109,7 @@ pub async fn pulse_measurement(
                 cycle_time: params.cycle_time,
                 v_high: params.v_high,
                 v_low: params.v_low,
+                delay: 0.0
             },
             params.n_points_high,
             params.n_points_low,

@@ -9,7 +9,7 @@ import { StdpControls as StdpControlsInterface, VoltageWaveform, StdpWaveform, S
 import { conductanceMeasurement } from '../api'
 import { ConductanceMeasurement } from '../../../../utils/types'
 import generateWaveform, { getMaxV, getMinV } from './generateWaveform'
-import AnimateHeight from './AnimateHeight'
+import AnimateHeight from '../../../../components/Graph/AnimateHeight'
 import MultiSlider from '../../../../components/MultiSlider'
 import SciNumberInput from '../../../../components/Input/SciNumberInput'
 

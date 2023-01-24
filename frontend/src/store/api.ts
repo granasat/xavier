@@ -1,6 +1,7 @@
+import { buildUrl } from "../utils"
 
-const MEASUREMENT_ENDPOINT = "http://localhost:8000/api/measurements/"
-const CALIBRATE_ENDPOINT = "http://localhost:8000/api/calibrate"
+const MEASUREMENT_ENDPOINT = buildUrl("measurements/")
+const CALIBRATE_ENDPOINT = buildUrl("calibrate")
 
 export async function fetchMeasurements() {
     const response = await fetch(MEASUREMENT_ENDPOINT, {

@@ -2,7 +2,6 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState, AppThunk } from './store';
 import { MeasurementList } from '../utils/types'
 import { fetchMeasurements as fetchMeasurementsFromAPI } from './api';
-import { dispatch } from 'd3';
 
 export interface GlobalState {
     measurements: MeasurementList

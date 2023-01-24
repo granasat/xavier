@@ -36,14 +36,16 @@ export function getParameters(data: StdpCollectionMeasurement, dimensions: Dimen
     let auxDataConductanceRatio = 
         data.collection.map(meas => (meas.stdpMeasurement.conductance - data.baseConductance) / data.baseConductance)
 
-
     let auxDataDelay = data.collection.map(w => w.delay)
+
+    console.log({auxDataConductanceRatio})
 
     let finalData: StdpPoint[] = []
     auxDataConductanceRatio.forEach((r, i) => finalData.push({delay: auxDataDelay[i], conductanceRatio: r}))
 
     let delayScaling = getScaling<number>(auxDataDelay, 's', (d) => d)
     // let conductanceScaling = getScaling<number>(auxDataConductance, 'S', (d) => d)
+    console.log({sfactor: delayScaling.scalingFactor})
 
     let xExtentDelay: [number, number] = [0, 0]
     let aux = d3.extent([...auxDataDelay.map(d => -d), ...auxDataDelay], d => d * delayScaling.scalingFactor)
@@ -52,8 +54,9 @@ export function getParameters(data: StdpCollectionMeasurement, dimensions: Dimen
 
     let yExtentConductanceRatio: [number, number] = [0, 0]
     aux = d3.extent([...auxDataConductanceRatio.map(c => -c), ...auxDataConductanceRatio], d => d)
+    console.log({aux})
     aux[0] != undefined && aux[1] != undefined && (yExtentConductanceRatio = aux)
-    if (yExtentConductanceRatio[0] + yExtentConductanceRatio[1] == 0) {
+    if (Math.abs(yExtentConductanceRatio[0]) + Math.abs(yExtentConductanceRatio[1]) == 0) {
         yExtentConductanceRatio = [-1, 1]
     }
 

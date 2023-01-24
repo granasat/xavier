@@ -1,4 +1,4 @@
 
-export {StdpControls} from './Stdp'
-export {default as PulseControls} from './PulseControls'
+export { StdpControls } from './Stdp'
+export { PulseControls } from './Pulse'
 

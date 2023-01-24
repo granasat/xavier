@@ -62,6 +62,7 @@ class Xavier():
 
     ENDPOINT_PING = 'ping'
     ENDPOINT_CALIBRATE = 'calibrate'
+    STATUS_ERROR = 'Error'
 
     def __init__(self, host, port):
         self.host = host
@@ -339,4 +340,7 @@ class Measure():
             )
         )
 
-        return response.json()
+        response = response.json()
+        if response['status'] == self.xavier.STATUS_ERROR:
+            raise Exception("Measurement error, check console logs.")
+        return response

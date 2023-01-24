@@ -1,65 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Number, Slider } from "../../../components/Input"
-import { number } from 'mathjs';
-import { HiLockOpen, HiLockClosed } from 'react-icons/hi'
-import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { setPoints, setPulseParamsField, selectPulseParams, setTimeScale } from './measurementControlsSlice';
-import { VoltageWaveform } from './types'
-import math from '../../../utils/math'
-import SciNumberInput from '../../../components/Input/SciNumberInput';
+import { useState } from "react"
+import { HiLockClosed, HiLockOpen } from "react-icons/hi"
+import { Number, Slider } from "../../../../components/Input"
+import SciNumberInput from "../../../../components/Input/SciNumberInput"
+import { useAppDispatch, useAppSelector } from "../../../../store/hooks"
+import { selectPulseParams, setPulseParamsField } from "../measurementControlsSlice"
+import { PulseTrain } from "../types"
 
-type ValidateId =
-   "vHigh" | "vLow" |  "nPulses" | "cycleTime" | "dutyCycle" | "nPointsHigh" | "nPointsLow"
-
-type PulseWaveFormParams = {
-    vHigh: number,
-    vLow: number,
-    nPulses: number,
-    dutyCycle: number,
-    cycleTime: number,
-    nPointsHigh: number,
-    nPointsLow: number,
-}
-
-async function GenerateWaveform(params: PulseWaveFormParams) {
-    let cycle: VoltageWaveform  = [];
-
-    // First halve
-    let timeHigh = params.cycleTime * params.dutyCycle / 100
-    let samplingTimeHigh = timeHigh / (params.nPointsHigh + 1)
-    cycle.push({time: 0, voltage: params.vHigh})
-    // for (let i = 0; i < params.nPointsHigh; i++) {{
-    //     cycle.push({time: (i+1) * samplingTimeHigh, voltage: params.vHigh})
-    // }}
-    cycle.push({time: timeHigh, voltage: params.vHigh})
-
-    // Second halve
-    let timeLow = params.cycleTime * (1 - params.dutyCycle / 100);
-    let samplingTimeLow = timeLow / (params.nPointsLow + 1)
-    cycle.push({time: timeHigh, voltage: params.vLow})
-    // for (let i = 0; i < params.nPointsLow; i++) {{
-    //     cycle.push({time: (i+1) * samplingTimeLow + timeHigh, voltage: params.vLow})
-    // }}
-    cycle.push({time: params.cycleTime, voltage: params.vLow})
-
-
-    let waveForm: VoltageWaveform = [];
-    for (let i = 0; i < params.nPulses; i++) {
-        waveForm.push(
-            ...cycle.map((point) => (
-                {
-                    time: point.time + (params.cycleTime * i),
-                    voltage: point.voltage
-                }
-            ))
-        )
-    }
-
-    return waveForm
-
-}
-
-export default function PulseControls() {
+export default function CollectionControls() {
     const dispatch = useAppDispatch()
     const params = useAppSelector(selectPulseParams)
 
@@ -75,47 +22,19 @@ export default function PulseControls() {
         nPointsLow: true
     }) // wether or not this settings are valid
 
-    useEffect(() => {
-        if (!Object.values(valid).every( v => v ))
-            return
-        try {
-            let unitCycleTime = math.unit(params.cycleTime)
-
-            //@ts-expect-error
-            let scaling = Math.ceil(1 / unitCycleTime.units[0].prefix.value)
-            if (scaling < 1) {
-                scaling = 1
-            }
-            dispatch(setTimeScale(scaling))
-
-            let nPulses = parseInt(params.nPulses) > 100 ? 100 : parseInt(params.nPulses);
-            GenerateWaveform({
-                vHigh:          math.unit(params.vHigh).value,
-                vLow:           math.unit(params.vLow).value,
-                nPulses:        nPulses,
-                cycleTime:      unitCycleTime.value,
-                dutyCycle:      parseFloat(params.dutyCycle !== "" ? params.dutyCycle : "0"),
-                nPointsHigh:    parseInt(params.nPointsHigh),
-                nPointsLow:     parseInt(params.nPointsLow),
-            }).then((waveForm) => {
-                dispatch(setPoints(waveForm))
-            })
-        } catch {}       
-
-    }, [params])
-
-    const onValidateCurry = (id: ValidateId) => {
+    const onValidateCurry = (id: keyof PulseTrain | "nPointsHigh" | "nPointsLow") => {
         return (isValid: boolean) => setValid({ ...valid, [id]: isValid })
     }
 
-    return (
-        <div className="w-full flex flex-col items-center ">
+
+
+    return (<>
             <div className="py-4 w-full">
                 <Number
                     label="Max Voltage"
                     onChange={(value) => {
                         // setVHigh(value)
-                        dispatch(setPulseParamsField({val: value, key: 'vHigh'}))
+                        dispatch(setPulseParamsField({ val: value, key: 'vHigh' }))
                     }}
                     value={params.vHigh}
                     onValidate={onValidateCurry("vHigh")}
@@ -129,7 +48,7 @@ export default function PulseControls() {
                 <Number
                     label="Min Voltage"
                     onChange={(value) => {
-                        dispatch(setPulseParamsField({val: value, key: 'vLow'}))
+                        dispatch(setPulseParamsField({ val: value, key: 'vLow' }))
                     }}
                     value={params.vLow}
                     onValidate={onValidateCurry("vLow")}
@@ -143,7 +62,7 @@ export default function PulseControls() {
                 <Number
                     label="Number of pulses"
                     onChange={(value) => {
-                        dispatch(setPulseParamsField({val: value, key: 'nPulses'}))
+                        dispatch(setPulseParamsField({ val: value, key: 'nPulses' }))
                     }}
                     value={params.nPulses}
                     onValidate={onValidateCurry("nPulses")}
@@ -153,7 +72,7 @@ export default function PulseControls() {
                 <Number
                     label="Cycle time"
                     onChange={(value) => {
-                        dispatch(setPulseParamsField({val: value, key: 'cycleTime'}))
+                        dispatch(setPulseParamsField({ val: value, key: 'cycleTime' }))
                     }}
                     value={params.cycleTime}
                     onValidate={onValidateCurry("cycleTime")}
@@ -168,7 +87,7 @@ export default function PulseControls() {
                 <Slider
                     label="Duty cycle"
                     onChange={(value) => {
-                        dispatch(setPulseParamsField({val: value, key: 'dutyCycle'}))
+                        dispatch(setPulseParamsField({ val: value, key: 'dutyCycle' }))
                     }}
                     step={10}
                     min={0}
@@ -186,8 +105,8 @@ export default function PulseControls() {
                         <Number
                             label="Sampling points high"
                             onChange={(value) => {
-                                dispatch(setPulseParamsField({val: value, key: 'nPointsHigh'}))
-                                samplingPointsTied && dispatch(setPulseParamsField({val: value, key: 'nPointsLow'}))
+                                dispatch(setPulseParamsField({ val: value, key: 'nPointsHigh' }))
+                                samplingPointsTied && dispatch(setPulseParamsField({ val: value, key: 'nPointsLow' }))
                             }}
                             value={params.nPointsHigh}
                             onValidate={onValidateCurry("nPointsHigh")}
@@ -207,7 +126,7 @@ export default function PulseControls() {
                                     return
                                 }
 
-                                samplingPointsTied && dispatch(setPulseParamsField({val: params.nPointsHigh, key: 'nPointsLow'}))
+                                samplingPointsTied && dispatch(setPulseParamsField({ val: params.nPointsHigh, key: 'nPointsLow' }))
                                 setSamplingPointsTied(true)
                             }}
                         >
@@ -228,8 +147,8 @@ export default function PulseControls() {
                         <Number
                             label="Sampling points low"
                             onChange={(value) => {
-                                dispatch(setPulseParamsField({val: value, key: 'nPointsLow'}))
-                                samplingPointsTied && dispatch(setPulseParamsField({val: value, key: 'nPointsHigh'}))
+                                dispatch(setPulseParamsField({ val: value, key: 'nPointsLow' }))
+                                samplingPointsTied && dispatch(setPulseParamsField({ val: value, key: 'nPointsHigh' }))
                             }}
                             value={params.nPointsLow}
                             onValidate={onValidateCurry("nPointsLow")}
@@ -244,33 +163,33 @@ export default function PulseControls() {
             </div>
             <div className='py-4 w-full border-b border-solid border-neutral-600'>
                 <div className={'flex flex-col ' + (params.noise ? 'justify-between' : 'justify-around')}>
-                    
-                    { params.noise &&
-                    <div className='flex justify-between pb-2 px-1'>
-                        <div>
-                            Noise STD
+
+                    {params.noise &&
+                        <div className='flex justify-between pb-2 px-1'>
+                            <div>
+                                Noise STD
+                            </div>
+                            <div className='ml-2 w-20 text-center my-auto'>
+                                <SciNumberInput
+                                    label=''
+                                    value={params.noiseStd}
+                                    unit='V'
+                                    onChange={(value) => {
+                                        dispatch(setPulseParamsField({ val: value, key: 'noiseStd' }))
+                                    }}
+                                ></SciNumberInput>
+                            </div>
                         </div>
-                        <div className='ml-2 w-20 text-center my-auto'>
-                            <SciNumberInput
-                                label=''
-                                value={params.noiseStd}
-                                unit='V'
-                                onChange={(value) => {
-                                    dispatch(setPulseParamsField({val: value, key: 'noiseStd'}))
-                                }}
-                            ></SciNumberInput>
-                        </div>
-                    </div>
                     }
                     <div
                         className={'p-2 py-1 ease-in-out cursor-pointer hover:bg-neutral-500 rounded-xl border border-solid border-neutral-600 flex justify-center' + (params.noise ? ' bg-red-500' : '')}
-                        onClick={() => dispatch(setPulseParamsField({val: !params.noise, key: 'noise'}))}
+                        onClick={() => dispatch(setPulseParamsField({ val: !params.noise, key: 'noise' }))}
                     >
 
-                            { params.noise ? 'Disable' : 'Enable Noise' }
+                        {params.noise ? 'Disable' : 'Enable Noise'}
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }

@@ -99,7 +99,7 @@ pub fn add_noisy_waveform<D: WgfmuDriver>(
         n_points
     ];
 
-    // We llok at two adjacent points and linearly interpolate between them
+    // We look at two adjacent points and linearly interpolate between them
     let mut current_index = 0; // Index of the of the first of the two points we are looking at in the provided waveform
     let mut current_time = 0.0; // Absolute time of the first of the two points we are looking at in the provided waveform
     for (idx, &time) in final_time_points[..n_points - 1].iter().enumerate() {

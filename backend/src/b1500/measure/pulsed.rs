@@ -41,14 +41,29 @@ fn init_pulsed_voltage_waveform(
 
 pub type PulseTrainCollection = Vec<PulseTrain>;
 
+/// Notes:
+/// _____     _____     _____ ------------> v_high
+/// |   |     |   |     |   |
+/// |   |     |   |     |   |
+/// |   |_____|   |_____|   |_____ -------> v_low
+/// |<------->| cycle_time
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PulseTrain {
+    /// The number of pulses the train has
     pub n_pulses: usize,
+    /// The duty cycle of the pulses, that is the proportion of the cycle time
+    /// that the pulse is active (at v_high).
     pub duty_cycle: f64,
+    /// The cycle time, that is the time that it takes to complete a cycle, 
+    /// one v_high, one v_low. (seconds)
     pub cycle_time: f64,
+    /// Active voltage of the pulses, see notes above. (Volts)
     pub v_high: f64,
+    /// Low voltage of the pulses, see notes above. (Volts)
     pub v_low: f64,
+    /// Initial waiting delay, in seconds. (seconds)
+    pub delay: f64
 }
 
 fn wgfmu_add_pulse_train<T: WgfmuDriver>(
@@ -122,6 +137,26 @@ fn wgfmu_add_pulse_train<T: WgfmuDriver>(
             pulse_train.duty_cycle,
         );
 
+        if pulse_train.delay != 0.0 {
+            let wait_wf: VoltageWaveForm = vec![VoltageWaveFormPoint { voltage: 0.0, dtime: pulse_train.delay * 1.001 }];
+            let delay_pattern = format!("{}_delay", pattern);
+            wgfmu.create_pattern(delay_pattern.as_str(), 0.0)?;
+            add_waveform(wgfmu, &wait_wf, delay_pattern.as_str())?;
+            wgfmu.add_sequence(CHANNEL2, delay_pattern.as_str(), 1)?;
+            // eventEndTime = time + interval * (points - 1) + average
+            let points = 80.0;
+            let interval = (pulse_train.delay - *avg_time) / (points - 1.0);
+            wgfmu.set_measure_event(
+                delay_pattern.as_str(),
+                "event_delay",
+                0.0,
+                points as i32,
+                interval,
+                *avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
+        }
+
         if !noise {
             add_waveform(wgfmu, &waveform, pattern)?;
             wgfmu.add_sequence(CHANNEL2, pattern, pulse_train.n_pulses)?;
@@ -166,10 +201,10 @@ fn wgfmu_add_pulse_train<T: WgfmuDriver>(
             )?;
 
             // Sampling margin
-            let pattern_margin = format!("{}_margin", pattern);
-            wgfmu.create_pattern(pattern_margin.as_str(), 0.0)?;
-            wgfmu.add_vector(pattern_margin.as_str(), pulse_train.cycle_time, 0.0)?;
-            wgfmu.add_sequence(CHANNEL2, "v1_margin", 1)?;
+            // let pattern_margin = format!("{}_margin", pattern);
+            // wgfmu.create_pattern(pattern_margin.as_str(), 0.0)?;
+            // wgfmu.add_vector(pattern_margin.as_str(), pulse_train.delay, 0.0)?;
+            // wgfmu.add_sequence(CHANNEL2, pattern_margin.as_str(), 1)?;
         } else {
             // let total_measure_time = measure_totaltime_high + measure_totaltime_low;
 
@@ -210,6 +245,26 @@ fn wgfmu_add_pulse_train<T: WgfmuDriver>(
     {
         let v2 = format!("{}_v2", pattern);
 
+        if pulse_train.delay != 0.0 {
+            let wait_wf: VoltageWaveForm = vec![VoltageWaveFormPoint { voltage: 0.0, dtime: pulse_train.delay * 1.001 }];
+            let delay_pattern = format!("{}_delay", v2);
+            wgfmu.create_pattern(delay_pattern.as_str(), 0.0)?;
+            add_waveform(wgfmu, &wait_wf, delay_pattern.as_str())?;
+            wgfmu.add_sequence(CHANNEL1, delay_pattern.as_str(), 1)?;
+            // eventEndTime = time + interval * (points - 1) + average
+            let points = 80.0;
+            let interval = (pulse_train.delay - *avg_time) / (points - 1.0);
+            wgfmu.set_measure_event(
+                delay_pattern.as_str(),
+                "event_delay_v2",
+                0.0,
+                points as i32,
+                interval,
+                *avg_time,
+                MeasureEventMode::MeasureEventDataAveraged,
+            )?;
+        }
+
         if !noise {
             let total_time = pulse_train.cycle_time + 2e-8;
 
@@ -218,7 +273,7 @@ fn wgfmu_add_pulse_train<T: WgfmuDriver>(
             // End at 0
             wgfmu.set_vector(v2.as_str(), total_time, 0.0)?;
 
-            wgfmu.add_sequence(CHANNEL1, "v2", pulse_train.n_pulses)?;
+            wgfmu.add_sequence(CHANNEL1, v2.as_str(), pulse_train.n_pulses)?;
 
             wgfmu.set_measure_event(
                 v2.as_str(),
@@ -247,7 +302,7 @@ fn wgfmu_add_pulse_train<T: WgfmuDriver>(
             // End at 0
             wgfmu.set_vector(v2.as_str(), total_time * (pulse_train.n_pulses as f64), 0.0)?;
 
-            wgfmu.add_sequence(CHANNEL1, "v2", 1)?;
+            wgfmu.add_sequence(CHANNEL1, v2.as_str(), 1)?;
 
             let total_points =
                 (n_rep * (unique_pulses * (n_points_low as usize + n_points_high as usize))) as i32;
